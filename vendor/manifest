@@ -1,0 +1,19 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/hanwen/go-fuse/fuse",
+			"repository": "https://github.com/hanwen/go-fuse",
+			"revision": "6fc3efaa68ed25ecd238017cdc9d14d1c94dfae2",
+			"branch": "master",
+			"path": "/fuse"
+		},
+		{
+			"importpath": "github.com/hanwen/go-fuse/splice",
+			"repository": "https://github.com/hanwen/go-fuse",
+			"revision": "6fc3efaa68ed25ecd238017cdc9d14d1c94dfae2",
+			"branch": "master",
+			"path": "/splice"
+		}
+	]
+}
