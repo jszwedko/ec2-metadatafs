@@ -9,18 +9,20 @@ and `cat`.
 
 Example:
 ```
-$ sudo mkdir /aws
-$ ec2-metadatafs /aws &
-$ cat /aws/meta-data/instance-id
+$ mkdir /tmp/aws
+$ ec2-metadatafs default /tmp/aws
+$ cat /tmp/aws/meta-data/instance-id
 i-123456
+$ fusermount -u /tmp/aws
 ```
 
-### Advantages over `curl`ing http://169.254.169.254
+### Advantages over `curl http://169.254.169.254`
 
 * No need to remember the special IP address of the service
 * Can use traditional unix tools to walk the tree
+* Can limit outbound traffic to this IP just to root
 
-### Advantages over the [`ec-metadata`](http://aws.amazon.com/code/1825) tool
+### Advantages over the [`ec2-metadata`](http://aws.amazon.com/code/1825) tool
 
 * No need to `cut` the output of commands to get just the field
 * Access to all metadata fields, not just the limited subset the tool returns
@@ -33,9 +35,13 @@ Feedback and feature requests are welcome!
 
 ```bash
 curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.0.1/linux_amd64 > ec2-metadatafs
-sudo mv ec2-metadatafs /usr/local/bin/
+sudo mv ec2-metadatafs /usr/bin/
 sudo chmod +x /usr/local/bin/ec2-metadatafs
 ```
+
+You can have it automatically mount by adding the following to `/etc/fstab`:
+
+`ec2-metadatafs#default    /aws    fuse    _netdev,retries=3,allow_other    0    0`
 
 Currently only 64 bit due to a bug in the upstream fuse library (see:
 https://github.com/hanwen/go-fuse/pull/88).
@@ -45,7 +51,7 @@ github.com/jszwedko/ec2-metadatafs` (requires Go >= 1.5 to be installed).
 
 ## Usage
 
-`ec2-metadatafs <mount point>` will mount the filesystem at the designated mount point.
+`ec2-metadatafs -f <mount point>` will mount the filesystem at the designated mount point.
 
 Example:
 ```

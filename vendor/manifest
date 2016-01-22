@@ -14,6 +14,18 @@
 			"revision": "6fc3efaa68ed25ecd238017cdc9d14d1c94dfae2",
 			"branch": "master",
 			"path": "/splice"
+		},
+		{
+			"importpath": "github.com/jessevdk/go-flags",
+			"repository": "https://github.com/jessevdk/go-flags",
+			"revision": "d91b7c5a5ce0b1d99d765ec3fb20ab590e52ddcb",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/sevlyar/go-daemon",
+			"repository": "https://github.com/sevlyar/go-daemon",
+			"revision": "5841a7979e56bc7b2efa860e69f1d944e14f4d4a",
+			"branch": "master"
 		}
 	]
 }

@@ -1,13 +1,16 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
+	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/jessevdk/go-flags"
+	"github.com/sevlyar/go-daemon"
 )
 
 var (
@@ -17,52 +20,106 @@ var (
 	RevisionString string
 )
 
+// Options holds the command line arguments and flags
+// Intended for use with go-flags
+type Options struct {
+	Foreground   bool         `short:"f" long:"foreground" description:"Run in foreground"`
+	Version      bool         `short:"v" long:"version" description:"Display version info"`
+	MountOptions mountOptions `short:"o" long:"options" description:"These options will be passed through to FUSE. Please see the OPTIONS section of the FUSE manual for valid options"`
+
+	Args struct {
+		Endpoint   string `positional-arg-name:"endpoint" description:"Endpoint of the EC2 metadata service, set to 'default' to use http://169.254.169.254/latest/meta-data/"`
+		Mountpoint string `positional-arg-name:"mountpoint" description:"Directory to mount the filesystem"`
+	} `positional-args:"yes" required:"yes"`
+}
+
+type mountOptions struct {
+	opts []string
+}
+
+func (o *mountOptions) String() string {
+	return strings.Join(o.opts, ",")
+}
+
+func (o *mountOptions) MarshalFlag() (string, error) {
+	return o.String(), nil
+}
+
+func (o *mountOptions) UnmarshalFlag(s string) error {
+	if o.opts == nil {
+		o.opts = []string{}
+	}
+
+	o.opts = append(o.opts, strings.Split(s, ",")...)
+
+	return nil
+}
+
+func mountAndServe(endpoint, mountpoint string, opts mountOptions) {
+	nfs := pathfs.NewPathNodeFs(NewMetadataFs(endpoint), nil)
+	server, err := fuse.NewServer(nodefs.NewFileSystemConnector(nfs.Root(), nil).RawFS(), mountpoint, &fuse.MountOptions{Options: opts.opts})
+	if err != nil {
+		log.Fatalf("mount fail: %v\n", err)
+	}
+	server.Serve()
+}
+
 func main() {
-	var (
-		endpoint    string
-		showVersion bool
-	)
-	flag.StringVar(&endpoint, "endpoint", "http://169.254.169.254/latest/", "AWS EC2 metadata endpoint")
-	flag.BoolVar(&showVersion, "version", false, "Display version")
-	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Usage: ec2metadafs [flags] <mount point>")
-		flag.PrintDefaults()
+	options := &Options{}
 
-		fmt.Fprintf(os.Stderr, `
-Description:
-	ec2metadafs mounts a FUSE filesystem at the given location which exposes the
-  EC2 instance metadata of the host as files and directories mimicking the URL
-  structure of the metadata service.
+	parser := flags.NewParser(options, flags.Default)
+	parser.LongDescription = `
+ec2metadafs mounts a FUSE filesystem at the given location which exposes the
+EC2 instance metadata of the host as files and directories mimicking the URL
+structure of the metadata service.`
 
-Version:
+	_, err := parser.Parse()
+	if err != nil {
+		if err.(*flags.Error).Type == flags.ErrHelp {
+			fmt.Printf(`Version:
   %s (%s)
 
 Author:
   Jesse Szwedko
 
 Project Homepage:
-  http://github.com/jszwedko/ec2metadafs
+  http://github.com/jszwedko/ec2-metadatafs
 
 Report bugs to:
-  http://github.com/jszwedko/ec2metadafs/issues
+  http://github.com/jszwedko/ec2-metadatafs/issues
 `, VersionString, RevisionString)
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
 	}
-	flag.Parse()
 
-	if showVersion {
+	if options.Version {
 		fmt.Printf("%s (%s)\n", VersionString, RevisionString)
 		os.Exit(0)
 	}
 
-	if len(flag.Args()) < 1 {
-		flag.Usage()
-		os.Exit(1)
+	if options.Args.Endpoint == "default" {
+		options.Args.Endpoint = "http://169.254.169.254/latest/"
 	}
 
-	nfs := pathfs.NewPathNodeFs(NewMetadataFs(endpoint), nil)
-	server, _, err := nodefs.MountRoot(flag.Arg(0), nfs.Root(), nodefs.NewOptions())
-	if err != nil {
-		log.Fatalf("Mount fail: %v\n", err)
+	if options.Foreground {
+		mountAndServe(options.Args.Endpoint, options.Args.Mountpoint, options.MountOptions)
+		return
 	}
-	server.Serve()
+
+	// daemonize
+	context := new(daemon.Context)
+	child, err := context.Reborn()
+	if err != nil {
+		log.Fatalf("mount fail: %v\n", err)
+	}
+
+	if child == nil {
+		defer context.Release()
+		mountAndServe(options.Args.Endpoint, options.Args.Mountpoint, options.MountOptions)
+	} else {
+		fmt.Println(child)
+		fmt.Println(options.MountOptions)
+	}
 }

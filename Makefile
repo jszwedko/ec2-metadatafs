@@ -24,7 +24,7 @@ dist: $(GOX)
 
 .PHONY: vet
 vet:
-	@go vet ./...
+	@go vet .
 
 .PHONY: lint
 lint: $(LINT)
@@ -32,7 +32,7 @@ lint: $(LINT)
 
 .PHONY: test
 test:
-	@go test
+	@go test .
 
 .PHONY: check
 check: vet lint test build
