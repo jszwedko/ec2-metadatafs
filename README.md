@@ -55,39 +55,26 @@ github.com/jszwedko/ec2-metadatafs` (requires Go >= 1.5 to be installed).
 
 ## Usage
 
-`ec2-metadatafs -f <mount point>` will mount the filesystem at the designated mount point.
-
-Example:
 ```
-$ sudo mkdir /aws
-$ ec2-metadatafs /aws &
-$ ls -1 /aws/meta-data/
-ami-id
-ami-launch-index
-ami-manifest-path
-block-device-mapping
-hostname
-instance-action
-instance-id
-instance-type
-local-hostname
-local-ipv4
-mac
-metrics
-network
-placement
-profile
-public-hostname
-public-ipv4
-public-keys
-reservation-id
-security-groups
-services
-$ cat /aws/meta-data/instance-id
-i-123456
-```
+Usage:
+  ec2-metadatafs [OPTIONS] endpoint mountpoint
 
-See `ec2-metadatafs -h` for more configuration options.
+ec2metadafs mounts a FUSE filesystem at the given location which exposes the
+EC2 instance metadata of the host as files and directories mimicking the URL
+structure of the metadata service.
+
+Application Options:
+  -f, --foreground  Run in foreground
+  -v, --version     Display version info
+  -o, --options=    These options will be passed through to FUSE. Please see the OPTIONS section of the FUSE manual for valid options
+
+Help Options:
+  -h, --help        Show this help message
+
+Arguments:
+  endpoint:         Endpoint of the EC2 metadata service, set to 'default' to use http://169.254.169.254/latest/meta-data/
+  mountpoint:       Directory to mount the filesystem
+```
 
 ### Developing
 
