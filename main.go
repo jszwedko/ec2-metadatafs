@@ -97,16 +97,21 @@ func mountAndServe(endpoint, mountpoint string, opts mountOptions) {
 func main() {
 	options := &Options{}
 
-	parser := flags.NewParser(options, flags.Default)
+	parser := flags.NewParser(options, flags.HelpFlag|flags.PassDoubleDash)
 	parser.LongDescription = `
 ec2metadafs mounts a FUSE filesystem at the given location which exposes the
 EC2 instance metadata of the host as files and directories mirroring the URL
 structure of the metadata service.`
 
 	_, err := parser.Parse()
-	if err != nil {
-		if err.(*flags.Error).Type == flags.ErrHelp {
-			fmt.Printf(`Mount options:
+	if options.Version {
+		fmt.Printf("%s (%s)\n", VersionString, RevisionString)
+		os.Exit(0)
+	}
+
+	if parser.FindOptionByLongName("help").IsSet() {
+		parser.WriteHelp(os.Stdout)
+		fmt.Printf(`Mount options:
   -o endpoint=ENDPOINT       EC2 metadata service HTTP endpoint, same as --endpoint=
   -o FUSEOPTION=OPTIONVALUE  FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 
@@ -122,16 +127,12 @@ Project Homepage:
 Report bugs to:
   http://github.com/jszwedko/ec2-metadatafs/issues
 `, VersionString, RevisionString)
-			os.Exit(0)
-		} else {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		os.Exit(0)
 	}
 
-	if options.Version {
-		fmt.Printf("%s (%s)\n", VersionString, RevisionString)
-		os.Exit(0)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	if ok, value := options.MountOptions.ExtractOption("endpoint"); ok {
