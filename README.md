@@ -53,8 +53,9 @@ EC2 instance metadata of the host as files and directories mirroring the URL
 structure of the metadata service.
 
 Application Options:
+  -v, --verbose     Print verbose logs
   -f, --foreground  Run in foreground
-  -v, --version     Display version info
+  -V, --version     Display version info
   -e, --endpoint=   EC2 metadata service HTTP endpoint (default: http://169.254.169.254/latest/)
   -o, --options=    Mount options, see below for description
 

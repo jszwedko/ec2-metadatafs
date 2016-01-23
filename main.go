@@ -9,6 +9,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/sevlyar/go-daemon"
 )
@@ -23,8 +24,9 @@ var (
 // Options holds the command line arguments and flags
 // Intended for use with go-flags
 type Options struct {
+	Verbose      bool         `short:"v" long:"verbose"    description:"Print verbose logs"`
 	Foreground   bool         `short:"f" long:"foreground" description:"Run in foreground"`
-	Version      bool         `short:"v" long:"version"    description:"Display version info"`
+	Version      bool         `short:"V" long:"version"    description:"Display version info"`
 	Endpoint     string       `short:"e" long:"endpoint"   description:"EC2 metadata service HTTP endpoint" default:"http://169.254.169.254/latest/"`
 	MountOptions mountOptions `short:"o" long:"options"    description:"Mount options, see below for description"`
 
@@ -86,6 +88,7 @@ func (o *mountOptions) ExtractOption(s string) (ok bool, value string) {
 }
 
 func mountAndServe(endpoint, mountpoint string, opts mountOptions) {
+	log.Printf("[DEBUG] mounting at %s directed at %s with options: %+v", mountpoint, endpoint, opts.opts)
 	nfs := pathfs.NewPathNodeFs(NewMetadataFs(endpoint), nil)
 	server, err := fuse.NewServer(nodefs.NewFileSystemConnector(nfs.Root(), nil).RawFS(), mountpoint, &fuse.MountOptions{Options: opts.opts})
 	if err != nil {
@@ -96,6 +99,12 @@ func mountAndServe(endpoint, mountpoint string, opts mountOptions) {
 
 func main() {
 	options := &Options{}
+
+	filter := &logutils.LevelFilter{
+		Levels:   []logutils.LogLevel{"DEBUG", "WARN", "ERROR"},
+		MinLevel: logutils.LogLevel("WARN"),
+		Writer:   os.Stderr,
+	}
 
 	parser := flags.NewParser(options, flags.HelpFlag|flags.PassDoubleDash)
 	parser.LongDescription = `
@@ -111,7 +120,8 @@ structure of the metadata service.`
 
 	if parser.FindOptionByLongName("help").IsSet() {
 		parser.WriteHelp(os.Stdout)
-		fmt.Printf(`Mount options:
+		fmt.Printf(`
+Mount options:
   -o endpoint=ENDPOINT       EC2 metadata service HTTP endpoint, same as --endpoint=
   -o FUSEOPTION=OPTIONVALUE  FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 
@@ -135,6 +145,12 @@ Report bugs to:
 		os.Exit(1)
 	}
 
+	if options.Verbose {
+		filter.MinLevel = logutils.LogLevel("DEBUG")
+	}
+
+	log.SetOutput(filter)
+
 	if ok, value := options.MountOptions.ExtractOption("endpoint"); ok {
 		options.Endpoint = value
 	}
@@ -148,11 +164,13 @@ Report bugs to:
 	context := new(daemon.Context)
 	child, err := context.Reborn()
 	if err != nil {
-		log.Fatalf("mount fail: %v\n", err)
+		log.Fatalf("fork fail: %v\n", err)
 	}
 
 	if child == nil {
 		defer context.Release()
 		mountAndServe(options.Endpoint, options.Args.Mountpoint, options.MountOptions)
+	} else {
+		log.Printf("forked child with PID %d", child.Pid)
 	}
 }

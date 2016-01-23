@@ -16,6 +16,12 @@
 			"path": "/splice"
 		},
 		{
+			"importpath": "github.com/hashicorp/logutils",
+			"repository": "https://github.com/hashicorp/logutils",
+			"revision": "0dc08b1671f34c4250ce212759ebd880f743d883",
+			"branch": "master"
+		},
+		{
 			"importpath": "github.com/jessevdk/go-flags",
 			"repository": "https://github.com/jessevdk/go-flags",
 			"revision": "d91b7c5a5ce0b1d99d765ec3fb20ab590e52ddcb",

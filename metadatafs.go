@@ -35,45 +35,58 @@ func NewMetadataFs(endpoint string) *MetadataFs {
 
 // GetAttr returns an fuse.Attr representing a read-only file or directory
 func (fs *MetadataFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
-	resp, err := fs.Client.Head(fs.Endpoint + name)
+	url := fs.Endpoint + name
+
+	log.Printf("[DEBUG] issuing HTTP HEAD to AWS metadata API for path: %s", url)
+	resp, err := fs.Client.Head(url)
 	if err != nil {
-		log.Printf("error querying AWS metadata API: %s", err)
+		log.Printf("[ERROR] failed to query AWS metadata API: %s", err)
 		return nil, fuse.EIO
 	}
 
+	log.Printf("[DEBUG] got %d from AWS metadata API for path: %s", resp.StatusCode, url)
 	switch resp.StatusCode {
 	case http.StatusNotFound:
+		log.Printf("[DEBUG] returning ENOENT for %s", name)
 		return nil, fuse.ENOENT
 	case http.StatusOK:
 		if isDir(name) {
+			log.Printf("[DEBUG] determined '%s' is a directory", name)
 			return httpResponseToAttr(resp, true), fuse.OK
 		}
+		log.Printf("[DEBUG] determined '%s' is a file", name)
 		return httpResponseToAttr(resp, false), fuse.OK
 	default:
-		log.Printf("unknown HTTP status code from AWS metadata API: %d", resp.StatusCode)
+		log.Printf("[ERROR] unknown HTTP status code from AWS metadata API: %d", resp.StatusCode)
 		return nil, fuse.EIO
 	}
 }
 
 // OpenDir returns the list of paths under the given path
 func (fs *MetadataFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEntry, code fuse.Status) {
-	resp, err := fs.Client.Get(fs.Endpoint + name)
+	url := fs.Endpoint + name
+
+	log.Printf("[DEBUG] issuing HTTP GET to AWS metadata API for path: %s", url)
+	resp, err := fs.Client.Get(url)
 	if err != nil {
-		log.Printf("error querying AWS metadata API: %s", err)
+		log.Printf("[ERROR] failed to query AWS metadata API: %s", err)
 		return nil, fuse.EIO
 	}
 
+	log.Printf("[DEBUG] got %d from AWS metadata API for path: %s", resp.StatusCode, url)
 	switch resp.StatusCode {
 	case http.StatusNotFound:
+		log.Printf("[DEBUG] returning file not found for %s", name)
 		return nil, fuse.ENOENT
 	case http.StatusOK:
 		if !isDir(name) {
+			log.Printf("[DEBUG] returning ENOTDIR for %s", name)
 			return nil, fuse.ENOTDIR
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("error querying AWS metadata API: %s", err)
+			log.Printf("[ERROR] failed to query AWS metadata API: %s", err)
 			return nil, fuse.EIO
 		}
 
@@ -91,39 +104,46 @@ func (fs *MetadataFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirE
 			}
 
 			if isDir(path.Join(name, file)) {
+				log.Printf("[DEBUG] adding dir entry for '%s' as directory", file)
 				dirEntries = append(dirEntries, fuse.DirEntry{Name: file, Mode: fuse.S_IFDIR})
 			} else {
+				log.Printf("[DEBUG] adding dir entry for '%s' as file", file)
 				dirEntries = append(dirEntries, fuse.DirEntry{Name: file, Mode: fuse.S_IFREG})
 			}
 		}
 
 		return dirEntries, fuse.OK
 	default:
-		log.Printf("unknown HTTP status code from AWS metadata API: %d", resp.StatusCode)
+		log.Printf("[ERROR] unknown HTTP status code from AWS metadata API: %d", resp.StatusCode)
 		return nil, fuse.EIO
 	}
 }
 
 // Open returns a datafile representing the HTTP response body
 func (fs *MetadataFs) Open(name string, flags uint32, context *fuse.Context) (file nodefs.File, code fuse.Status) {
-	resp, err := fs.Client.Get(fs.Endpoint + name)
+	url := fs.Endpoint + name
+
+	log.Printf("[DEBUG] issuing HTTP GET to AWS metadata API for path: '%s'", url)
+	resp, err := fs.Client.Get(url)
 	if err != nil {
-		log.Printf("error querying AWS metadata API: %s", err)
-		return nil, fuse.EIO
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("error querying AWS metadata API: %s", err)
+		log.Printf("[ERROR] failed to query AWS metadata API: %s", err)
 		return nil, fuse.EIO
 	}
 
+	log.Printf("[DEBUG] got %d from AWS metadata API for path %s", resp.StatusCode, url)
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		return nil, fuse.ENOENT
 	case http.StatusOK:
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("[ERROR] failed to query AWS metadata API: %s", err)
+			return nil, fuse.EIO
+		}
+
 		return nodefs.NewDataFile(body), fuse.OK
 	default:
-		log.Printf("unknown HTTP status code from AWS metadata API: %d", resp.StatusCode)
+		log.Printf("[ERROR] unknown HTTP status code from AWS metadata API: %d", resp.StatusCode)
 		return nil, fuse.EIO
 	}
 }
@@ -163,7 +183,7 @@ func httpResponseToAttr(resp *http.Response, dir bool) *fuse.Attr {
 
 	lastModified, err := time.Parse(time.RFC1123, resp.Header.Get("Last-Modified"))
 	if err != nil {
-		log.Printf("couldn't parse Last-Modified from AWS metadata API: %s", resp.Header.Get("Last-Modified"))
+		log.Printf("[WARN] couldn't parse Last-Modified '%s' as time: %s", resp.Header.Get("Last-Modified"), err)
 	}
 
 	attr.SetTimes(nil, &lastModified, &lastModified)
