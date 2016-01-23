@@ -19,8 +19,7 @@ $ fusermount -u /tmp/aws
 ### Advantages over `curl http://169.254.169.254`
 
 * No need to remember the special IP address of the service
-* Can use traditional unix tools to walk the tree
-* Can limit outbound traffic to this IP just to root
+* Can use traditional unix tools to walk and interrogate the tree
 
 ### Advantages over the [`ec2-metadata`](http://aws.amazon.com/code/1825) tool
 
@@ -36,15 +35,20 @@ Feedback and feature requests are welcome!
 ```bash
 curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.0.1/linux_amd64 > ec2-metadatafs
 sudo mv ec2-metadatafs /usr/bin/
-sudo chmod +x /usr/local/bin/ec2-metadatafs
+sudo chmod +x /usr/bin/ec2-metadatafs
+```
+
+#### Linux (32 bit)
+
+```bash
+curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.0.1/linux_386 > ec2-metadatafs
+sudo mv ec2-metadatafs /usr/bin/
+sudo chmod +x /usr/bin/ec2-metadatafs
 ```
 
 You can have it automatically mount by adding the following to `/etc/fstab`:
 
-`ec2-metadatafs#default    /aws    fuse    _netdev,retries=3,allow_other    0    0`
-
-Currently only 64 bit due to a bug in the upstream fuse library (see:
-https://github.com/hanwen/go-fuse/pull/88).
+`ec2-metadatafs#default    /aws    fuse    _netdev,allow_other    0    0`
 
 Alternatively, install the latest via: `GOVENDOREXPERIMENT=1 go get
 github.com/jszwedko/ec2-metadatafs` (requires Go >= 1.5 to be installed).

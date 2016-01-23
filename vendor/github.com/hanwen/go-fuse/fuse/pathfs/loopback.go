@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
@@ -116,18 +115,6 @@ func (fs *loopbackFileSystem) Chown(path string, uid uint32, gid uint32, context
 
 func (fs *loopbackFileSystem) Truncate(path string, offset uint64, context *fuse.Context) (code fuse.Status) {
 	return fuse.ToStatus(os.Truncate(fs.GetPath(path), int64(offset)))
-}
-
-func (fs *loopbackFileSystem) Utimens(path string, Atime *time.Time, Mtime *time.Time, context *fuse.Context) (code fuse.Status) {
-	var a time.Time
-	if Atime != nil {
-		a = *Atime
-	}
-	var m time.Time
-	if Mtime != nil {
-		m = *Mtime
-	}
-	return fuse.ToStatus(os.Chtimes(fs.GetPath(path), a, m))
 }
 
 func (fs *loopbackFileSystem) Readlink(name string, context *fuse.Context) (out string, code fuse.Status) {
