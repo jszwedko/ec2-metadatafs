@@ -30,28 +30,14 @@ Feedback and feature requests are welcome!
 
 ## Installing
 
-#### Linux (64 bit)
-
-```bash
-curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.0.1/linux_amd64 > ec2-metadatafs
-sudo mv ec2-metadatafs /usr/bin/
-sudo chmod +x /usr/bin/ec2-metadatafs
-```
-
-#### Linux (32 bit)
-
-```bash
-curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.0.1/linux_386 > ec2-metadatafs
-sudo mv ec2-metadatafs /usr/bin/
-sudo chmod +x /usr/bin/ec2-metadatafs
-```
+Install the latest via: `GOVENDOREXPERIMENT=1 go get
+github.com/jszwedko/ec2-metadatafs` (requires Go >= 1.5 to be installed).
 
 You can have it automatically mount by adding the following to `/etc/fstab`:
 
 `ec2-metadatafs#default    /aws    fuse    _netdev,allow_other    0    0`
 
-Alternatively, install the latest via: `GOVENDOREXPERIMENT=1 go get
-github.com/jszwedko/ec2-metadatafs` (requires Go >= 1.5 to be installed).
+Prebuilt packages will be provided shortly.
 
 ## Usage
 
