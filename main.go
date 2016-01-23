@@ -118,8 +118,5 @@ Report bugs to:
 	if child == nil {
 		defer context.Release()
 		mountAndServe(options.Args.Endpoint, options.Args.Mountpoint, options.MountOptions)
-	} else {
-		fmt.Println(child)
-		fmt.Println(options.MountOptions)
 	}
 }
