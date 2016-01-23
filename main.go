@@ -24,12 +24,12 @@ var (
 // Intended for use with go-flags
 type Options struct {
 	Foreground   bool         `short:"f" long:"foreground" description:"Run in foreground"`
-	Version      bool         `short:"v" long:"version" description:"Display version info"`
-	MountOptions mountOptions `short:"o" long:"options" description:"These options will be passed through to FUSE. Please see the OPTIONS section of the FUSE manual for valid options"`
+	Version      bool         `short:"v" long:"version"    description:"Display version info"`
+	Endpoint     string       `short:"e" long:"endpoint"   description:"EC2 metadata service HTTP endpoint" default:"http://169.254.169.254/latest/"`
+	MountOptions mountOptions `short:"o" long:"options"    description:"Mount options, see below for description"`
 
 	Args struct {
-		Endpoint   string `positional-arg-name:"endpoint" description:"Endpoint of the EC2 metadata service, set to 'default' to use http://169.254.169.254/latest/"`
-		Mountpoint string `positional-arg-name:"mountpoint" description:"Directory to mount the filesystem"`
+		Mountpoint string `positional-arg-name:"mountpoint" description:"Directory to mount the filesystem at"`
 	} `positional-args:"yes" required:"yes"`
 }
 
@@ -55,6 +55,36 @@ func (o *mountOptions) UnmarshalFlag(s string) error {
 	return nil
 }
 
+// ExtractOption deletes the option specified and returns whether the option
+// was found and its value (if it has one)
+// E.g. endpoint=http://example.com or allow_other
+func (o *mountOptions) ExtractOption(s string) (ok bool, value string) {
+	if o.opts == nil {
+		o.opts = []string{}
+	}
+
+	index := -1
+	for i, opt := range o.opts {
+		parts := strings.SplitN(opt, "=", 2)
+
+		if parts[0] != s {
+			continue
+		}
+
+		index = i
+		if len(parts) == 2 {
+			value = parts[1]
+		}
+		break
+	}
+
+	if index != -1 {
+		o.opts = append(o.opts[:index], o.opts[index+1:]...)
+	}
+
+	return index != -1, value
+}
+
 func mountAndServe(endpoint, mountpoint string, opts mountOptions) {
 	nfs := pathfs.NewPathNodeFs(NewMetadataFs(endpoint), nil)
 	server, err := fuse.NewServer(nodefs.NewFileSystemConnector(nfs.Root(), nil).RawFS(), mountpoint, &fuse.MountOptions{Options: opts.opts})
@@ -70,13 +100,17 @@ func main() {
 	parser := flags.NewParser(options, flags.Default)
 	parser.LongDescription = `
 ec2metadafs mounts a FUSE filesystem at the given location which exposes the
-EC2 instance metadata of the host as files and directories mimicking the URL
+EC2 instance metadata of the host as files and directories mirroring the URL
 structure of the metadata service.`
 
 	_, err := parser.Parse()
 	if err != nil {
 		if err.(*flags.Error).Type == flags.ErrHelp {
-			fmt.Printf(`Version:
+			fmt.Printf(`Mount options:
+  -o endpoint=ENDPOINT       EC2 metadata service HTTP endpoint, same as --endpoint=
+  -o FUSEOPTION=OPTIONVALUE  FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
+
+Version:
   %s (%s)
 
 Author:
@@ -90,6 +124,7 @@ Report bugs to:
 `, VersionString, RevisionString)
 			os.Exit(0)
 		} else {
+			fmt.Println(err)
 			os.Exit(1)
 		}
 	}
@@ -99,12 +134,12 @@ Report bugs to:
 		os.Exit(0)
 	}
 
-	if options.Args.Endpoint == "default" {
-		options.Args.Endpoint = "http://169.254.169.254/latest/"
+	if ok, value := options.MountOptions.ExtractOption("endpoint"); ok {
+		options.Endpoint = value
 	}
 
 	if options.Foreground {
-		mountAndServe(options.Args.Endpoint, options.Args.Mountpoint, options.MountOptions)
+		mountAndServe(options.Endpoint, options.Args.Mountpoint, options.MountOptions)
 		return
 	}
 
@@ -117,6 +152,6 @@ Report bugs to:
 
 	if child == nil {
 		defer context.Release()
-		mountAndServe(options.Args.Endpoint, options.Args.Mountpoint, options.MountOptions)
+		mountAndServe(options.Endpoint, options.Args.Mountpoint, options.MountOptions)
 	}
 }

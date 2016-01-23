@@ -10,16 +10,19 @@ and `cat`.
 Example:
 ```
 $ mkdir /tmp/aws
-$ ec2-metadatafs default /tmp/aws
+$ ec2-metadatafs /tmp/aws
 $ cat /tmp/aws/meta-data/instance-id
 i-123456
-$ fusermount -u /tmp/aws
+$ cat /tmp/aws/user-data
+#! /bin/bash
+echo 'Hello world'
 ```
 
 ### Advantages over `curl http://169.254.169.254`
 
 * No need to remember the special IP address of the service
 * Can use traditional unix tools to walk and interrogate the tree
+* Tab completion
 
 ### Advantages over the [`ec2-metadata`](http://aws.amazon.com/code/1825) tool
 
@@ -35,7 +38,7 @@ github.com/jszwedko/ec2-metadatafs` (requires Go >= 1.5 to be installed).
 
 You can have it automatically mount by adding the following to `/etc/fstab`:
 
-`ec2-metadatafs#default    /aws    fuse    _netdev,allow_other    0    0`
+`ec2-metadatafs   /aws    fuse    _netdev,allow_other    0    0`
 
 Prebuilt packages will be provided shortly.
 
@@ -43,23 +46,27 @@ Prebuilt packages will be provided shortly.
 
 ```
 Usage:
-  ec2-metadatafs [OPTIONS] endpoint mountpoint
+  ec2-metadatafs [OPTIONS] mountpoint
 
 ec2metadafs mounts a FUSE filesystem at the given location which exposes the
-EC2 instance metadata of the host as files and directories mimicking the URL
+EC2 instance metadata of the host as files and directories mirroring the URL
 structure of the metadata service.
 
 Application Options:
   -f, --foreground  Run in foreground
   -v, --version     Display version info
-  -o, --options=    These options will be passed through to FUSE. Please see the OPTIONS section of the FUSE manual for valid options
+  -e, --endpoint=   EC2 metadata service HTTP endpoint (default: http://169.254.169.254/latest/)
+  -o, --options=    Mount options, see below for description
 
 Help Options:
   -h, --help        Show this help message
 
 Arguments:
-  endpoint:         Endpoint of the EC2 metadata service, set to 'default' to use http://169.254.169.254/latest/
-  mountpoint:       Directory to mount the filesystem
+  mountpoint:       Directory to mount the filesystem at
+
+Mount options:
+  -o endpoint=ENDPOINT       EC2 metadata service HTTP endpoint, same as --endpoint=
+  -o FUSEOPTION=OPTIONVALUE  FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 ```
 
 ### Developing
