@@ -58,7 +58,7 @@ Help Options:
   -h, --help        Show this help message
 
 Arguments:
-  endpoint:         Endpoint of the EC2 metadata service, set to 'default' to use http://169.254.169.254/latest/meta-data/
+  endpoint:         Endpoint of the EC2 metadata service, set to 'default' to use http://169.254.169.254/latest/
   mountpoint:       Directory to mount the filesystem
 ```
 

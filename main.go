@@ -28,7 +28,7 @@ type Options struct {
 	MountOptions mountOptions `short:"o" long:"options" description:"These options will be passed through to FUSE. Please see the OPTIONS section of the FUSE manual for valid options"`
 
 	Args struct {
-		Endpoint   string `positional-arg-name:"endpoint" description:"Endpoint of the EC2 metadata service, set to 'default' to use http://169.254.169.254/latest/meta-data/"`
+		Endpoint   string `positional-arg-name:"endpoint" description:"Endpoint of the EC2 metadata service, set to 'default' to use http://169.254.169.254/latest/"`
 		Mountpoint string `positional-arg-name:"mountpoint" description:"Directory to mount the filesystem"`
 	} `positional-args:"yes" required:"yes"`
 }
