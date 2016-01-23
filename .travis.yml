@@ -1,0 +1,12 @@
+sudo: true # needed to use /dev/fuse
+language: go
+go:
+- 1.5.3
+addons:
+  apt:
+    packages:
+    - fuse
+script:
+- make
+notifications:
+  email: jesse.szwedko@gmail.com
