@@ -22,6 +22,10 @@ build:
 dist: $(GOX)
 	@$(GOX) -ldflags "-X main.VersionString=$(VERSION) -X main.RevisionString=$(REVISION)" -os 'linux' -arch '386 amd64'  -output 'dist/{{.OS}}_{{.Arch}}' .
 
+.PHONY: release
+release: dist
+	hub release create $$(for f in dist/* ; do echo -n "-a $$f " ; done) $(tag)
+
 .PHONY: vet
 vet:
 	@go vet .
