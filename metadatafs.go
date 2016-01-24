@@ -150,6 +150,7 @@ func (fs *MetadataFs) Open(name string, flags uint32, context *fuse.Context) (fi
 
 // Hardcoded directory pattern
 // See http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
+// TODO dynamically determine and cache paths that are directories
 var directoryRexep = regexp.MustCompile(strings.Replace(`^(
 |
 meta-data|
@@ -161,7 +162,6 @@ meta-data/network|
 meta-data/network/interfaces/macs|
 meta-data/network/interfaces/macs/[0-9a-f:]+|
 meta-data/placement|
-meta-data/placement/availability-zone|
 meta-data/public-keys|
 meta-data/public-keys/0|
 meta-data/services|
