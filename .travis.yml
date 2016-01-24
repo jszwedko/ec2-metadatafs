@@ -1,4 +1,4 @@
-sudo: true # needed to use /dev/fuse
+sudo: true
 language: go
 go:
 - 1.5.3
@@ -10,3 +10,13 @@ script:
 - make
 notifications:
   email: jesse.szwedko@gmail.com
+deploy:
+  provider: releases
+  api_key:
+    secure: Ya+RJvlsWr5iAQ8W0S7zjbdb7M/3Y/n5F4Fsn3xIE4oG61HKe6VNgcRox1XEUOzqXKa7FY8XQUHhbnQC02tuWUSE+BEi8WejdZMXUvogdiSOq9EQCHvQToySJZVG6vlM6sT36ryssqdnspwOvUdLqSxACdHJ7m+gijpdh/IM5+QRvBqp7wDbD4jzZG0IksqXF/gmYHPKxt5JIBS22kc4znvkQZMBYiz6lsPwidq7i2xArcCeODp02kmoZV1IDV0KBeutwmSbsvDUsQusHhnBO1MpgHLQ7w4U0yvDgTJ7gx1qgnmoZPUx5wvN5PgU49Hmr65Al2h2oUMB/IImrr+EoyYPLQ2gdvIgtqmFqiCcFSCr+s/mdYZxd63rBwRkeM8w64j7hl391J9+mcle2P4OaxRMT5D2RObBP+xpsN1YtZ9+jfgeS9Ia5JEeFBJcwLdvsJh08QxUaKsFFLCjpWBLq25NrYMVqWb59L3WWYC2zOZ0jimfvDkgGLYBPn9Aqla/3Wm6fHtBHf60TxRFrWXbP3IT7Ew/2D4StihUb/dZ2IbryIs519WSeNkieKsJljvM+jfiW3pROjAUtri1K/eLBGyarhOCYZP41jtvbc39jrASuSuJF0xWFgL15bzlYCUTPPK+RozKjprnLFJoPEyf/S5n311l6CsyN9HVqr/Vf0Y=
+  file_glob: true
+  file: 'dist/*'
+  skip_cleanup: true
+  on:
+    repo: jszwedko/ec2-metadatafs
+    tags: true
