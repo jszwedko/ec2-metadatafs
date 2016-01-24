@@ -1,6 +1,6 @@
 ## ec2-metadatafs [![Build Status](https://travis-ci.org/jszwedko/ec2-metadatafs.svg?branch=master)](https://travis-ci.org/jszwedko/ec2-metadatafs)
 
-[FUSE](https://github.com/libfuse/libfuse) filesystem that exposes [EC2
+[FUSE](https://github.com/libfuse/libfuse) filesystem that exposes the [EC2
 metadata
 service](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html)
 in the form of a readonly filesystem. This allows simple interaction
@@ -11,6 +11,64 @@ Example:
 ```
 $ mkdir /tmp/aws
 $ ec2-metadatafs /tmp/aws
+$ tree /tmp/aws
+/tmp/aws
+├── dynamic
+│   └── instance-identity
+│       ├── document
+│       ├── dsa2048
+│       ├── pkcs7
+│       ├── rsa2048
+│       └── signature
+├── meta-data
+│   ├── ami-id
+│   ├── ami-launch-index
+│   ├── ami-manifest-path
+│   ├── block-device-mapping
+│   │   ├── ami
+│   │   └── root
+│   ├── hostname
+│   ├── iam
+│   │   ├── info
+│   │   └── security-credentials
+│   │       └── test
+│   ├── instance-action
+│   ├── instance-id
+│   ├── instance-type
+│   ├── local-hostname
+│   ├── local-ipv4
+│   ├── mac
+│   ├── metrics
+│   ├── network
+│   │   └── interfaces
+│   │       └── macs
+│   │           └── 06:5e:69:f7:53:ed
+│   │               ├── device-number
+│   │               ├── interface-id
+│   │               ├── local-hostname
+│   │               ├── local-ipv4s
+│   │               ├── mac
+│   │               ├── owner-id
+│   │               ├── security-group-ids
+│   │               ├── security-groups
+│   │               ├── subnet-id
+│   │               ├── subnet-ipv4-cidr-block
+│   │               ├── vpc-id
+│   │               └── vpc-ipv4-cidr-block
+│   ├── placement
+│   │   └── availability-zone
+│   ├── profile
+│   ├── public-keys
+│   │   └── 0
+│   │       └── openssh-key
+│   ├── reservation-id
+│   ├── security-groups
+│   └── services
+│       └── domain
+│           └── amazonaws.com
+└── user-data
+
+15 directories, 39 files
 $ cat /tmp/aws/meta-data/instance-id
 i-123456
 $ cat /tmp/aws/user-data
@@ -22,7 +80,7 @@ echo 'Hello world'
 
 * No need to remember the special IP address of the service
 * Can use traditional unix tools to walk and interrogate the tree
-* Tab completion
+* Tab completion of paths
 
 ### Advantages over the [`ec2-metadata`](http://aws.amazon.com/code/1825) tool
 
