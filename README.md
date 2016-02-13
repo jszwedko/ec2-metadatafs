@@ -1,4 +1,4 @@
-## ec2-metadatafs [![Build Status](https://travis-ci.org/jszwedko/ec2-metadatafs.svg?branch=master)](https://travis-ci.org/jszwedko/ec2-metadatafs)
+## ec2-metadatafs [![Build Status](https://travis-ci.org/jszwedko/ec2-metadatafs.svg?branch=master)](https://travis-ci.org/jszwedko/ec2-metadatafs) [![Go Report Card](https://goreportcard.com/badge/github.com/jszwedko/ec2-metadatafs)](https://goreportcard.com/report/github.com/jszwedko/ec2-metadatafs)
 
 [FUSE](https://github.com/libfuse/libfuse) filesystem that exposes the [EC2
 metadata
