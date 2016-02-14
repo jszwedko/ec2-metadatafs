@@ -102,7 +102,7 @@ Feedback and feature requests are welcome!
 #### Linux (64 bit)
 
 ```bash
-curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.1.0/linux_amd64 > ec2-metadatafs
+curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.2.0/linux_amd64 > ec2-metadatafs
 sudo mv ec2-metadatafs /usr/bin/
 sudo chmod +x /usr/bin/ec2-metadatafs
 ```
@@ -110,7 +110,7 @@ sudo chmod +x /usr/bin/ec2-metadatafs
 #### Linux (32 bit)
 
 ```bash
-curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.1.0/linux_386 > ec2-metadatafs
+curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.2.0/linux_386 > ec2-metadatafs
 sudo mv ec2-metadatafs /usr/bin/
 sudo chmod +x /usr/bin/ec2-metadatafs
 ```
