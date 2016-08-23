@@ -1,4 +1,4 @@
-## Unreleased ()
+## 0.3.0 (August 23, 2016)
 
 Changes:
 * `-v` can now be specified multiple times (up to 2) to additionally print FUSE
