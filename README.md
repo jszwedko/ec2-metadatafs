@@ -139,7 +139,7 @@ ec2metadafs mounts a FUSE filesystem which exposes the EC2 instance metadata
 given location.
 
 Application Options:
-  -v, --verbose                Print verbose logs
+  -v, --verbose                Print verbose logs, can be specified multiple times (up to 2)
   -f, --foreground             Run in foreground
   -V, --version                Display version info
   -e, --endpoint=              EC2 metadata service HTTP endpoint (default: http://169.254.169.254/latest/)

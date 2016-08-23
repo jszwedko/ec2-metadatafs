@@ -29,10 +29,15 @@ var (
 	RevisionString string
 )
 
+const (
+	verbose     = 1
+	moreVerbose = 2
+)
+
 // Options holds the command line arguments and flags
 // Intended for use with go-flags
 type Options struct {
-	Verbose      bool         `short:"v" long:"verbose"     description:"Print verbose logs"`
+	Verbose      []bool       `short:"v" long:"verbose"     description:"Print verbose logs, can be specified multiple times (up to 2)"`
 	Foreground   bool         `short:"f" long:"foreground"  description:"Run in foreground"`
 	Version      bool         `short:"V" long:"version"     description:"Display version info"`
 	Endpoint     string       `short:"e" long:"endpoint"    description:"EC2 metadata service HTTP endpoint" default:"http://169.254.169.254/latest/"`
@@ -155,6 +160,8 @@ func mountAndServe(options *Options) {
 		log.Fatalf("mount fail: %v\n", err)
 	}
 
+	server.SetDebug(len(options.Verbose) >= moreVerbose)
+
 	if options.Tags {
 		go func() {
 			server.WaitMount()
@@ -251,7 +258,7 @@ Report bugs to:
 		MinLevel: logutils.LogLevel("WARN"),
 		Writer:   os.Stderr,
 	}
-	if options.Verbose {
+	if len(options.Verbose) >= verbose {
 		filter.MinLevel = logutils.LogLevel("DEBUG")
 	}
 	log.SetOutput(filter)
