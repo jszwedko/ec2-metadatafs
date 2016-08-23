@@ -33,6 +33,14 @@ func New(endpoint string) *MetadataFs {
 	}
 }
 
+// StatFs returns the statistics of the filesystem
+//
+// Currently stubbed to return the empty struct to satisfy programs like `df`
+// until we are able to implement accurate filesystem statistics
+func (fs *MetadataFs) StatFs(name string) *fuse.StatfsOut {
+	return &fuse.StatfsOut{}
+}
+
 // GetAttr returns an fuse.Attr representing a read-only file or directory
 func (fs *MetadataFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
 	url := fs.Endpoint + name
