@@ -1,3 +1,14 @@
+## Unreleased ()
+
+Changes:
+* `-v` can now be specified multiple times (up to 2) to additionally print FUSE
+  logs
+
+Bug fixes
+* Implement a stubbed StatFS so that programs like `df` do not complain.
+  However, it appears that it ignores the filesystem completely. A future
+  version will attempt to return accurate statistics.
+
 ## 0.2.0 (February 13, 2016)
 
 Add support for optionally mounting instance tags via `--tags`. See
