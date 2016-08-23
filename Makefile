@@ -19,6 +19,10 @@ $(GOX): ; @go get -v github.com/mitchellh/gox
 build:
 	@go build -ldflags "-X main.VersionString=$(VERSION) -X main.RevisionString=$(REVISION)" $(PACKAGES)
 
+.PHONY: install
+install:
+	@go install -ldflags "-X main.VersionString=$(VERSION) -X main.RevisionString=$(REVISION)" $(PACKAGES)
+
 .PHONY: dist
 dist: $(GOX)
 	@$(GOX) -ldflags "-X main.VersionString=$(VERSION) -X main.RevisionString=$(REVISION)" -os 'linux' -arch '386 amd64'  -output 'dist/{{.OS}}_{{.Arch}}' .
