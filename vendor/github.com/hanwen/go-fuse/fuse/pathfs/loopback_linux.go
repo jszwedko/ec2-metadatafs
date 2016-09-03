@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package pathfs
 
 import (
@@ -7,24 +11,6 @@ import (
 
 	"github.com/hanwen/go-fuse/fuse"
 )
-
-func (fs *loopbackFileSystem) StatFs(name string) *fuse.StatfsOut {
-	s := syscall.Statfs_t{}
-	err := syscall.Statfs(fs.GetPath(name), &s)
-	if err == nil {
-		return &fuse.StatfsOut{
-			Blocks:  s.Blocks,
-			Bsize:   uint32(s.Bsize),
-			Bfree:   s.Bfree,
-			Bavail:  s.Bavail,
-			Files:   s.Files,
-			Ffree:   s.Ffree,
-			Frsize:  uint32(s.Frsize),
-			NameLen: uint32(s.Namelen),
-		}
-	}
-	return nil
-}
 
 func (fs *loopbackFileSystem) ListXAttr(name string, context *fuse.Context) ([]string, fuse.Status) {
 	data, err := listXAttr(fs.GetPath(name))
@@ -70,7 +56,7 @@ func (fs *loopbackFileSystem) Utimens(path string, a *time.Time, m *time.Time, c
 	if m == nil {
 		ts[1].Nsec = _UTIME_OMIT
 	} else {
-		ts[1] = syscall.NsecToTimespec(a.UnixNano())
+		ts[1] = syscall.NsecToTimespec(m.UnixNano())
 		ts[1].Nsec = 0
 	}
 

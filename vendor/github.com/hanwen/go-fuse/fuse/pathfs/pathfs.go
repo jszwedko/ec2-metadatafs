@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package pathfs
 
 import (
@@ -12,11 +16,11 @@ import (
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 )
 
-// A parent pointer: node should be reachable as parent.children[name]
-type clientInodePath struct {
-	parent *pathInode
-	name   string
-	node   *pathInode
+// refCountedInode is used in clientInodeMap. The reference count is used to decide
+// if the entry in clientInodeMap can be dropped.
+type refCountedInode struct {
+	node     *pathInode
+	refCount int
 }
 
 // PathNodeFs is the file system that can translate an inode back to a
@@ -32,12 +36,11 @@ type PathNodeFs struct {
 	root      *pathInode
 	connector *nodefs.FileSystemConnector
 
-	// protects clientInodeMap and pathInode.Parent pointers
+	// protects clientInodeMap
 	pathLock sync.RWMutex
 
-	// This map lists all the parent links known for a given
-	// nodeId.
-	clientInodeMap map[uint64][]*clientInodePath
+	// This map lists all the parent links known for a given inode number.
+	clientInodeMap map[uint64]*refCountedInode
 
 	options *PathNodeFsOptions
 }
@@ -68,7 +71,7 @@ func (fs *PathNodeFs) ForgetClientInodes() {
 		return
 	}
 	fs.pathLock.Lock()
-	fs.clientInodeMap = map[uint64][]*clientInodePath{}
+	fs.clientInodeMap = map[uint64]*refCountedInode{}
 	fs.root.forgetClientInodes()
 	fs.pathLock.Unlock()
 }
@@ -188,7 +191,7 @@ func (fs *PathNodeFs) AllFiles(name string, mask uint32) []nodefs.WithFlags {
 // NewPathNodeFs returns a file system that translates from inodes to
 // path names.
 func NewPathNodeFs(fs FileSystem, opts *PathNodeFsOptions) *PathNodeFs {
-	root := new(pathInode)
+	root := &pathInode{}
 	root.fs = fs
 
 	if opts == nil {
@@ -198,7 +201,7 @@ func NewPathNodeFs(fs FileSystem, opts *PathNodeFsOptions) *PathNodeFs {
 	pfs := &PathNodeFs{
 		fs:             fs,
 		root:           root,
-		clientInodeMap: map[uint64][]*clientInodePath{},
+		clientInodeMap: map[uint64]*refCountedInode{},
 		options:        opts,
 	}
 	root.pathFs = pfs
@@ -216,10 +219,6 @@ func (fs *PathNodeFs) Root() nodefs.Node {
 type pathInode struct {
 	pathFs *PathNodeFs
 	fs     FileSystem
-	Name   string
-
-	// This is nil at the root of the mount.
-	Parent *pathInode
 
 	// This is to correctly resolve hardlinks of the underlying
 	// real filesystem.
@@ -271,59 +270,59 @@ func (n *pathInode) GetPath() string {
 		return ""
 	}
 
-	pathLen := 0
+	pathLen := 1
 
 	// The simple solution is to collect names, and reverse join
 	// them, them, but since this is a hot path, we take some
 	// effort to avoid allocations.
 
 	n.pathFs.pathLock.RLock()
-	p := n
-	for ; p.Parent != nil; p = p.Parent {
-		pathLen += len(p.Name) + 1
+	walkUp := n.Inode()
+
+	// TODO - guess depth?
+	segments := make([]string, 0, 10)
+	for {
+		parent, name := walkUp.Parent()
+		if parent == nil {
+			break
+		}
+		segments = append(segments, name)
+		pathLen += len(name) + 1
+		walkUp = parent
 	}
 	pathLen--
 
-	if p != p.pathFs.root {
-		n.pathFs.pathLock.RUnlock()
-		return ".deleted"
-	}
-
-	pathBytes := make([]byte, pathLen)
-	end := len(pathBytes)
-	for p = n; p.Parent != nil; p = p.Parent {
-		l := len(p.Name)
-		copy(pathBytes[end-l:], p.Name)
-		end -= len(p.Name) + 1
-		if end > 0 {
-			pathBytes[end] = '/'
+	pathBytes := make([]byte, 0, pathLen)
+	for i := len(segments) - 1; i >= 0; i-- {
+		pathBytes = append(pathBytes, segments[i]...)
+		if i > 0 {
+			pathBytes = append(pathBytes, '/')
 		}
 	}
 	n.pathFs.pathLock.RUnlock()
 
 	path := string(pathBytes)
 	if n.pathFs.debug {
-		// TODO: print node ID.
 		log.Printf("Inode = %q (%s)", path, n.fs.String())
+	}
+
+	if walkUp != n.pathFs.root.Inode() {
+		// This might happen if the node has been removed from
+		// the tree using unlink, but we are forced to run
+		// some file system operation, because the file is
+		// still opened.
+
+		// TODO - add a deterministic disambiguating suffix.
+		return ".deleted"
 	}
 
 	return path
 }
 
-func (n *pathInode) addChild(name string, child *pathInode) {
-	child.Parent = n
-	child.Name = name
-
-	if child.clientInode > 0 && n.pathFs.options.ClientInodes {
-		n.pathFs.pathLock.Lock()
-		defer n.pathFs.pathLock.Unlock()
-		m := n.pathFs.clientInodeMap[child.clientInode]
-		e := &clientInodePath{
-			n, name, child,
-		}
-		m = append(m, e)
-		n.pathFs.clientInodeMap[child.clientInode] = m
-	}
+func (n *pathInode) OnAdd(parent *nodefs.Inode, name string) {
+	// TODO it would be logical to increment the clientInodeMap reference count
+	// here. However, as the inode number is loaded lazily, we cannot do it
+	// yet.
 }
 
 func (n *pathInode) rmChild(name string) *pathInode {
@@ -331,62 +330,39 @@ func (n *pathInode) rmChild(name string) *pathInode {
 	if childInode == nil {
 		return nil
 	}
-	ch := childInode.Node().(*pathInode)
-
-	if ch.clientInode > 0 && n.pathFs.options.ClientInodes {
-		n.pathFs.pathLock.Lock()
-		defer n.pathFs.pathLock.Unlock()
-		m := n.pathFs.clientInodeMap[ch.clientInode]
-
-		idx := -1
-		for i, v := range m {
-			if v.parent == n && v.name == name {
-				idx = i
-				break
-			}
-		}
-		if idx >= 0 {
-			m[idx] = m[len(m)-1]
-			m = m[:len(m)-1]
-		}
-		if len(m) > 0 {
-			ch.Parent = m[0].parent
-			ch.Name = m[0].name
-			return ch
-		} else {
-			delete(n.pathFs.clientInodeMap, ch.clientInode)
-		}
-	}
-
-	ch.Name = ".deleted"
-	ch.Parent = nil
-
-	return ch
+	return childInode.Node().(*pathInode)
 }
 
-// Handle a change in clientInode number for an other wise unchanged
-// pathInode.
+func (n *pathInode) OnRemove(parent *nodefs.Inode, name string) {
+	if n.clientInode == 0 || !n.pathFs.options.ClientInodes || n.Inode().IsDir() {
+		return
+	}
+
+	n.pathFs.pathLock.Lock()
+	r := n.pathFs.clientInodeMap[n.clientInode]
+	if r != nil {
+		r.refCount--
+		if r.refCount == 0 {
+			delete(n.pathFs.clientInodeMap, n.clientInode)
+		}
+	}
+	n.pathFs.pathLock.Unlock()
+}
+
+// setClientInode sets the inode number if has not been set yet.
+// This function exists to allow lazy-loading of the inode number.
 func (n *pathInode) setClientInode(ino uint64) {
-	if ino == n.clientInode || !n.pathFs.options.ClientInodes {
+	if ino == 0 || n.clientInode != 0 || !n.pathFs.options.ClientInodes || n.Inode().IsDir() {
 		return
 	}
 	n.pathFs.pathLock.Lock()
 	defer n.pathFs.pathLock.Unlock()
-	if n.clientInode != 0 {
-		delete(n.pathFs.clientInodeMap, n.clientInode)
-	}
-
 	n.clientInode = ino
-	if n.Parent != nil {
-		e := &clientInodePath{
-			n.Parent, n.Name, n,
-		}
-		n.pathFs.clientInodeMap[ino] = append(n.pathFs.clientInodeMap[ino], e)
-	}
+	n.pathFs.clientInodeMap[ino] = &refCountedInode{node: n, refCount: 1}
 }
 
 func (n *pathInode) OnForget() {
-	if n.clientInode == 0 || !n.pathFs.options.ClientInodes {
+	if n.clientInode == 0 || !n.pathFs.options.ClientInodes || n.Inode().IsDir() {
 		return
 	}
 	n.pathFs.pathLock.Lock()
@@ -445,7 +421,6 @@ func (n *pathInode) Mknod(name string, mode uint32, dev uint32, context *fuse.Co
 	if code.Ok() {
 		pNode := n.createChild(name, false)
 		child = pNode.Inode()
-		n.addChild(name, pNode)
 	}
 	return child, code
 }
@@ -457,7 +432,6 @@ func (n *pathInode) Mkdir(name string, mode uint32, context *fuse.Context) (*nod
 	if code.Ok() {
 		pNode := n.createChild(name, true)
 		child = pNode.Inode()
-		n.addChild(name, pNode)
 	}
 	return child, code
 }
@@ -465,7 +439,7 @@ func (n *pathInode) Mkdir(name string, mode uint32, context *fuse.Context) (*nod
 func (n *pathInode) Unlink(name string, context *fuse.Context) (code fuse.Status) {
 	code = n.fs.Unlink(filepath.Join(n.GetPath(), name), context)
 	if code.Ok() {
-		n.rmChild(name)
+		n.Inode().RmChild(name)
 	}
 	return code
 }
@@ -473,7 +447,7 @@ func (n *pathInode) Unlink(name string, context *fuse.Context) (code fuse.Status
 func (n *pathInode) Rmdir(name string, context *fuse.Context) (code fuse.Status) {
 	code = n.fs.Rmdir(filepath.Join(n.GetPath(), name), context)
 	if code.Ok() {
-		n.rmChild(name)
+		n.Inode().RmChild(name)
 	}
 	return code
 }
@@ -485,7 +459,6 @@ func (n *pathInode) Symlink(name string, content string, context *fuse.Context) 
 	if code.Ok() {
 		pNode := n.createChild(name, false)
 		child = pNode.Inode()
-		n.addChild(name, pNode)
 	}
 	return child, code
 }
@@ -496,10 +469,13 @@ func (n *pathInode) Rename(oldName string, newParent nodefs.Node, newName string
 	newPath := filepath.Join(p.GetPath(), newName)
 	code = n.fs.Rename(oldPath, newPath, context)
 	if code.Ok() {
-		ch := n.rmChild(oldName)
-		p.rmChild(newName)
-		p.Inode().AddChild(newName, ch.Inode())
-		p.addChild(newName, ch)
+		// The rename may have overwritten another file, remove it from the tree
+		p.Inode().RmChild(newName)
+		ch := n.Inode().RmChild(oldName)
+		if ch != nil {
+			// oldName may have been forgotten in the meantime.
+			p.Inode().AddChild(newName, ch)
+		}
 	}
 	return code
 }
@@ -524,12 +500,10 @@ func (n *pathInode) Link(name string, existingFsnode nodefs.Node, context *fuse.
 		if existing.clientInode != 0 && existing.clientInode == a.Ino {
 			child = existing.Inode()
 			n.Inode().AddChild(name, existing.Inode())
-			n.addChild(name, existing)
 		} else {
 			pNode := n.createChild(name, false)
 			child = pNode.Inode()
 			pNode.clientInode = a.Ino
-			n.addChild(name, pNode)
 		}
 	}
 	return child, code
@@ -542,22 +516,24 @@ func (n *pathInode) Create(name string, flags uint32, mode uint32, context *fuse
 	if code.Ok() {
 		pNode := n.createChild(name, false)
 		child = pNode.Inode()
-		n.addChild(name, pNode)
 	}
 	return file, child, code
 }
 
 func (n *pathInode) createChild(name string, isDir bool) *pathInode {
-	i := new(pathInode)
-	i.fs = n.fs
-	i.pathFs = n.pathFs
+	i := &pathInode{
+		fs:     n.fs,
+		pathFs: n.pathFs,
+	}
 
 	n.Inode().NewChild(name, isDir, i)
+
 	return i
 }
 
 func (n *pathInode) Open(flags uint32, context *fuse.Context) (file nodefs.File, code fuse.Status) {
-	file, code = n.fs.Open(n.GetPath(), flags, context)
+	p := n.GetPath()
+	file, code = n.fs.Open(p, flags, context)
 	if n.pathFs.debug {
 		file = &nodefs.WithFlags{
 			File:        file,
@@ -581,12 +557,12 @@ func (n *pathInode) Lookup(out *fuse.Attr, name string, context *fuse.Context) (
 func (n *pathInode) findChild(fi *fuse.Attr, name string, fullPath string) (out *pathInode) {
 	if fi.Ino > 0 {
 		n.pathFs.pathLock.RLock()
-		v := n.pathFs.clientInodeMap[fi.Ino]
-		if len(v) > 0 {
-			out = v[0].node
-
+		r := n.pathFs.clientInodeMap[fi.Ino]
+		if r != nil {
+			out = r.node
+			r.refCount++
 			if fi.Nlink == 1 {
-				log.Println("Found linked inode, but Nlink == 1", fullPath)
+				log.Printf("Found linked inode, but Nlink == 1, ino=%d, fullPath=%q", fi.Ino, fullPath)
 			}
 		}
 		n.pathFs.pathLock.RUnlock()
@@ -594,10 +570,9 @@ func (n *pathInode) findChild(fi *fuse.Attr, name string, fullPath string) (out 
 
 	if out == nil {
 		out = n.createChild(name, fi.IsDir())
-		out.clientInode = fi.Ino
-		n.addChild(name, out)
+		out.setClientInode(fi.Ino)
 	} else {
-		// should add 'out' as a child to n ?
+		n.Inode().AddChild(name, out.Inode())
 	}
 	return out
 }
@@ -605,7 +580,9 @@ func (n *pathInode) findChild(fi *fuse.Attr, name string, fullPath string) (out 
 func (n *pathInode) GetAttr(out *fuse.Attr, file nodefs.File, context *fuse.Context) (code fuse.Status) {
 	var fi *fuse.Attr
 	if file == nil {
-		// called on a deleted files.
+		// Linux currently (tested on v4.4) does not pass a file descriptor for
+		// fstat. To be able to stat a deleted file we have to find ourselves
+		// an open fd.
 		file = n.Inode().AnyFile()
 	}
 
@@ -632,6 +609,15 @@ func (n *pathInode) GetAttr(out *fuse.Attr, file nodefs.File, context *fuse.Cont
 }
 
 func (n *pathInode) Chmod(file nodefs.File, perms uint32, context *fuse.Context) (code fuse.Status) {
+	// Note that Linux currently (Linux 4.4) DOES NOT pass a file descriptor
+	// to FUSE for fchmod. We still check because that may change in the future.
+	if file != nil {
+		code = file.Chmod(perms)
+		if code != fuse.ENOSYS {
+			return code
+		}
+	}
+
 	files := n.Inode().Files(fuse.O_ANYWRITE)
 	for _, f := range files {
 		// TODO - pass context
@@ -648,6 +634,15 @@ func (n *pathInode) Chmod(file nodefs.File, perms uint32, context *fuse.Context)
 }
 
 func (n *pathInode) Chown(file nodefs.File, uid uint32, gid uint32, context *fuse.Context) (code fuse.Status) {
+	// Note that Linux currently (Linux 4.4) DOES NOT pass a file descriptor
+	// to FUSE for fchown. We still check because it may change in the future.
+	if file != nil {
+		code = file.Chown(uid, gid)
+		if code != fuse.ENOSYS {
+			return code
+		}
+	}
+
 	files := n.Inode().Files(fuse.O_ANYWRITE)
 	for _, f := range files {
 		// TODO - pass context
@@ -664,6 +659,15 @@ func (n *pathInode) Chown(file nodefs.File, uid uint32, gid uint32, context *fus
 }
 
 func (n *pathInode) Truncate(file nodefs.File, size uint64, context *fuse.Context) (code fuse.Status) {
+	// A file descriptor was passed in AND the filesystem implements the
+	// operation on the file handle. This the common case for ftruncate.
+	if file != nil {
+		code = file.Truncate(size)
+		if code != fuse.ENOSYS {
+			return code
+		}
+	}
+
 	files := n.Inode().Files(fuse.O_ANYWRITE)
 	for _, f := range files {
 		// TODO - pass context
@@ -679,6 +683,15 @@ func (n *pathInode) Truncate(file nodefs.File, size uint64, context *fuse.Contex
 }
 
 func (n *pathInode) Utimens(file nodefs.File, atime *time.Time, mtime *time.Time, context *fuse.Context) (code fuse.Status) {
+	// Note that Linux currently (Linux 4.4) DOES NOT pass a file descriptor
+	// to FUSE for futimens. We still check because it may change in the future.
+	if file != nil {
+		code = file.Utimens(atime, mtime)
+		if code != fuse.ENOSYS {
+			return code
+		}
+	}
+
 	files := n.Inode().Files(fuse.O_ANYWRITE)
 	for _, f := range files {
 		// TODO - pass context

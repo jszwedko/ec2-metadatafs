@@ -430,15 +430,29 @@ func TestRequiredAllOnCommand(t *testing.T) {
 func TestDefaultOnCommand(t *testing.T) {
 	var opts = struct {
 		Command struct {
-			G bool `short:"g" default:"true"`
+			G string `short:"g" default:"value"`
 		} `command:"cmd"`
 	}{}
 
 	assertParseSuccess(t, &opts, "cmd")
 
-	if !opts.Command.G {
-		t.Errorf("Expected G to be true")
+	if opts.Command.G != "value" {
+		t.Errorf("Expected G to be \"value\"")
 	}
+}
+
+func TestAfterNonCommand(t *testing.T) {
+	var opts = struct {
+		Value bool `short:"v"`
+
+		Cmd1 struct {
+		} `command:"remove"`
+
+		Cmd2 struct {
+		} `command:"add"`
+	}{}
+
+	assertParseFail(t, ErrUnknownCommand, "Unknown command `nocmd'. Please specify one command of: add or remove", &opts, "nocmd", "remove")
 }
 
 func TestSubcommandsOptional(t *testing.T) {
@@ -467,17 +481,41 @@ func TestSubcommandsOptional(t *testing.T) {
 	}
 }
 
+func TestSubcommandsOptionalAfterNonCommand(t *testing.T) {
+	var opts = struct {
+		Value bool `short:"v"`
+
+		Cmd1 struct {
+		} `command:"remove"`
+
+		Cmd2 struct {
+		} `command:"add"`
+	}{}
+
+	p := NewParser(&opts, None)
+	p.SubcommandsOptional = true
+
+	retargs, err := p.ParseArgs([]string{"nocmd", "remove"})
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+		return
+	}
+
+	assertStringArray(t, retargs, []string{"nocmd", "remove"})
+}
+
 func TestCommandAlias(t *testing.T) {
 	var opts = struct {
 		Command struct {
-			G bool `short:"g" default:"true"`
+			G string `short:"g" default:"value"`
 		} `command:"cmd" alias:"cm"`
 	}{}
 
 	assertParseSuccess(t, &opts, "cm")
 
-	if !opts.Command.G {
-		t.Errorf("Expected G to be true")
+	if opts.Command.G != "value" {
+		t.Errorf("Expected G to be \"value\"")
 	}
 }
 

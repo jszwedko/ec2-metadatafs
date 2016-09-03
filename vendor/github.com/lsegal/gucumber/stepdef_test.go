@@ -3,8 +3,8 @@ package gucumber_test
 import (
 	"testing"
 
-	. "github.com/lsegal/gucumber"
-	"github.com/lsegal/gucumber/gherkin"
+	. "github.com/gucumber/gucumber"
+	"github.com/gucumber/gucumber/gherkin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,6 +41,14 @@ func TestRegisterSteps(t *testing.T) {
 	assert.Equal(t, 8, count)
 	assert.Equal(t, "arbitrary text and hello world abcd abcd context", str)
 	assert.Equal(t, -3.14159, fl)
+}
+
+func TestGlobalExecute(t *testing.T) {
+	count := 0
+	Given(`^I have a test with (\d+)$`, func(i int) { count += i })
+	found, err := Execute(t, "I have a test with 3", "")
+	assert.NoError(t, err)
+	assert.Equal(t, true, found)
 }
 
 func TestDifferentArgCount(t *testing.T) {

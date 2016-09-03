@@ -412,22 +412,41 @@ func (p *Parser) WriteHelp(writer io.Writer) {
 			}
 		})
 
-		if len(c.args) > 0 {
+		var args []*Arg
+		for _, arg := range c.args {
+			if arg.Description != "" {
+				args = append(args, arg)
+			}
+		}
+
+		if len(args) > 0 {
 			if c == p.Command {
 				fmt.Fprintf(wr, "\nArguments:\n")
 			} else {
 				fmt.Fprintf(wr, "\n[%s command arguments]\n", c.Name)
 			}
 
-			maxlen := aligninfo.descriptionStart()
+			descStart := aligninfo.descriptionStart() + paddingBeforeOption
 
-			for _, arg := range c.args {
-				prefix := strings.Repeat(" ", paddingBeforeOption)
-				fmt.Fprintf(wr, "%s%s", prefix, arg.Name)
+			for _, arg := range args {
+				argPrefix := strings.Repeat(" ", paddingBeforeOption)
+				argPrefix += arg.Name
 
 				if len(arg.Description) > 0 {
-					align := strings.Repeat(" ", maxlen-len(arg.Name)-1)
-					fmt.Fprintf(wr, ":%s%s", align, arg.Description)
+					argPrefix += ":"
+					wr.WriteString(argPrefix)
+
+					// Space between "arg:" and the description start
+					descPadding := strings.Repeat(" ", descStart-len(argPrefix))
+					// How much space the description gets before wrapping
+					descWidth := aligninfo.terminalColumns - 1 - descStart
+					// Whitespace to which we can indent new description lines
+					descPrefix := strings.Repeat(" ", descStart)
+
+					wr.WriteString(descPadding)
+					wr.WriteString(wrapText(arg.Description, descWidth, descPrefix))
+				} else {
+					wr.WriteString(argPrefix)
 				}
 
 				fmt.Fprintln(wr)
