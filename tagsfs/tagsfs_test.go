@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/jszwedko/ec2-metadatafs/internal/logging"
 )
 
 func setup(t *testing.T) (svc *ec2.EC2, dir string, cleanup func()) {
@@ -27,7 +28,7 @@ func setup(t *testing.T) (svc *ec2.EC2, dir string, cleanup func()) {
 		t.Fatalf("creating tempdir failed: %v", err)
 	}
 
-	fs := New(svc, "i-123456")
+	fs := New(svc, "i-123456", logging.NewLogger())
 	nfs := pathfs.NewPathNodeFs(fs, nil)
 	state, _, err := nodefs.MountRoot(tmpDir, nfs.Root(), nodefs.NewOptions())
 	if err != nil {
