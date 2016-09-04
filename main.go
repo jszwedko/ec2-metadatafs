@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -15,6 +17,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/hanwen/go-fuse/unionfs"
 	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
 	"github.com/jszwedko/ec2-metadatafs/metadatafs"
@@ -41,6 +44,7 @@ type Options struct {
 	Foreground   bool         `short:"f" long:"foreground"  description:"Run in foreground"`
 	Version      bool         `short:"V" long:"version"     description:"Display version info"`
 	Endpoint     string       `short:"e" long:"endpoint"    description:"EC2 metadata service HTTP endpoint" default:"http://169.254.169.254/latest/"`
+	CacheSec     int          `short:"c" long:"cachesec"    description:"Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for indefinite." default:"0"`
 	Tags         bool         `short:"t" long:"tags"        description:"Mount EC2 instance tags at <mount point>/tags"`
 	MountOptions mountOptions `short:"o" long:"options"     description:"Mount options, see below for description"`
 
@@ -150,8 +154,22 @@ func mountTags(nfs *pathfs.PathNodeFs, options *Options) {
 }
 
 func mountAndServe(options *Options) {
+	var fs pathfs.FileSystem
+
 	log.Printf("[DEBUG] mounting at %s directed at %s with options: %+v", options.Args.Mountpoint, options.Endpoint, options.MountOptions.opts)
-	nfs := pathfs.NewPathNodeFs(metadatafs.New(options.Endpoint), nil)
+	fs = metadatafs.New(options.Endpoint)
+	switch {
+	case options.CacheSec == 0:
+		log.Printf("[DEBUG] caching disabled")
+	case options.CacheSec <= 0:
+		log.Printf("[DEBUG] indefinite caching enabled")
+		fs = unionfs.NewCachingFileSystem(fs, time.Duration(-1)*time.Second)
+	default:
+		log.Printf("[DEBUG] caching enabled (%d seconds)", options.CacheSec)
+		fs = unionfs.NewCachingFileSystem(fs, time.Duration(options.CacheSec)*time.Second)
+	}
+
+	nfs := pathfs.NewPathNodeFs(fs, nil)
 	server, err := fuse.NewServer(
 		nodefs.NewFileSystemConnector(nfs.Root(), nil).RawFS(),
 		options.Args.Mountpoint,
@@ -199,6 +217,7 @@ Mount options:
   -o aws_access_key_id=ID      AWS API access key (see below), same as --aws-access-key-id=
   -o aws_secret_access_key=KEY AWS API secret key (see below), same as --aws-secret-access-key=
   -o aws_session_token=KEY     AWS API session token (see below), same as --aws-session-token=
+  -o cachesec=SEC              Number of seconds to cache files attributes and directory listings, same as --cachesec
   -o FUSEOPTION=OPTIONVALUE    FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 
 AWS credential chain:
@@ -212,6 +231,19 @@ AWS credential chain:
   - IAM role associated with the instance
 
   Note that the AWS session token is only needed for temporary credentials from AWS security token service.
+
+Caching:
+
+Caching of the following is supported and controlled via the cachesec parameter:
+
+* File attributes
+* Directory attributes
+* Directory listings
+
+When accessed this metadata will be cached for the number of seconds specified
+by cachesec. Use 0, the default, to disable caching and -1 to cache
+indefinitely (good if you never expect instance metadata to change). This cache
+is kept in memory and lost when the process is restarted.
 
 Version:
   %s (%s)
@@ -247,6 +279,14 @@ Report bugs to:
 
 	if ok, value := options.MountOptions.ExtractOption("aws_session_token"); ok {
 		options.AWSCredentials.AWSSessionToken = value
+	}
+
+	if ok, value := options.MountOptions.ExtractOption("cachesec"); ok {
+		options.CacheSec, err = strconv.Atoi(value)
+		if err != nil {
+			fmt.Printf("error parsing cachesec as integer: %s\n", err)
+			os.Exit(1)
+		}
 	}
 
 	if ok, _ := options.MountOptions.ExtractOption("tags"); ok {
