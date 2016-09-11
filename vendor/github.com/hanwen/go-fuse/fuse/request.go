@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package fuse
 
 import (
@@ -85,8 +89,9 @@ func (r *request) InputDebug() string {
 		names += fmt.Sprintf(" %d bytes", len(r.arg))
 	}
 
-	return fmt.Sprintf("Dispatch: %s, NodeId: %v.%v%v",
-		operationName(r.inHeader.Opcode), r.inHeader.NodeId, val, names)
+	return fmt.Sprintf("Dispatch %d: %s, NodeId: %v.%v%v",
+		r.inHeader.Unique, operationName(r.inHeader.Opcode),
+		r.inHeader.NodeId, val, names)
 }
 
 func (r *request) OutputDebug() string {
@@ -114,8 +119,9 @@ func (r *request) OutputDebug() string {
 		}
 	}
 
-	return fmt.Sprintf("Serialize: %s code: %v value: %v%v",
-		operationName(r.inHeader.Opcode), r.status, dataStr, flatStr)
+	return fmt.Sprintf("Serialize %d: %s code: %v value: %v%v",
+		r.inHeader.Unique, operationName(r.inHeader.Opcode), r.status,
+		dataStr, flatStr)
 }
 
 // setInput returns true if it takes ownership of the argument, false if not.

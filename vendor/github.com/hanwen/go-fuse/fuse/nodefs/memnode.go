@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package nodefs
 
 import (
@@ -47,16 +51,17 @@ func (fs *memNodeFs) OnUnmount() {
 
 func (fs *memNodeFs) newNode() *memNode {
 	fs.mutex.Lock()
+	id := fs.nextFree
+	fs.nextFree++
+	fs.mutex.Unlock()
 	n := &memNode{
 		Node: NewDefaultNode(),
 		fs:   fs,
-		id:   fs.nextFree,
+		id:   id,
 	}
 	now := time.Now()
 	n.info.SetTimes(&now, &now, &now)
 	n.info.Mode = fuse.S_IFDIR | 0777
-	fs.nextFree++
-	fs.mutex.Unlock()
 	return n
 }
 
@@ -72,12 +77,6 @@ type memNode struct {
 
 	link string
 	info fuse.Attr
-}
-
-func (n *memNode) newNode(name string, isDir bool) *memNode {
-	newNode := n.fs.newNode()
-	n.Inode().NewChild(name, isDir, newNode)
-	return newNode
 }
 
 func (n *memNode) filename() string {
@@ -97,8 +96,9 @@ func (n *memNode) StatFs() *fuse.StatfsOut {
 }
 
 func (n *memNode) Mkdir(name string, mode uint32, context *fuse.Context) (newNode *Inode, code fuse.Status) {
-	ch := n.newNode(name, true)
+	ch := n.fs.newNode()
 	ch.info.Mode = mode | fuse.S_IFDIR
+	n.Inode().NewChild(name, true, ch)
 	return ch.Inode(), fuse.OK
 }
 
@@ -115,10 +115,10 @@ func (n *memNode) Rmdir(name string, context *fuse.Context) (code fuse.Status) {
 }
 
 func (n *memNode) Symlink(name string, content string, context *fuse.Context) (newNode *Inode, code fuse.Status) {
-	ch := n.newNode(name, false)
+	ch := n.fs.newNode()
 	ch.info.Mode = fuse.S_IFLNK | 0777
 	ch.link = content
-
+	n.Inode().NewChild(name, false, ch)
 	return ch.Inode(), fuse.OK
 }
 
@@ -135,13 +135,14 @@ func (n *memNode) Link(name string, existing Node, context *fuse.Context) (*Inod
 }
 
 func (n *memNode) Create(name string, flags uint32, mode uint32, context *fuse.Context) (file File, node *Inode, code fuse.Status) {
-	ch := n.newNode(name, false)
+	ch := n.fs.newNode()
 	ch.info.Mode = mode | fuse.S_IFREG
 
 	f, err := os.Create(ch.filename())
 	if err != nil {
 		return nil, nil, fuse.ToStatus(err)
 	}
+	n.Inode().NewChild(name, false, ch)
 	return ch.newFile(f), ch.Inode(), fuse.OK
 }
 

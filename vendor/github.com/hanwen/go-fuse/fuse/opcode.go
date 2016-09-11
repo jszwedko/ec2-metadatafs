@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package fuse
 
 import (
@@ -51,6 +55,7 @@ const (
 	_OP_BATCH_FORGET = int32(42)
 	_OP_FALLOCATE    = int32(43) // protocol version 19.
 	_OP_READDIRPLUS  = int32(44) // protocol version 21.
+	_OP_FUSE_RENAME2 = int32(45) // protocol version 23.
 
 	// The following entries don't have to be compatible across Go-FUSE versions.
 	_OP_NOTIFY_ENTRY  = int32(100)
@@ -78,7 +83,7 @@ func doInit(server *Server, req *request) {
 	server.reqMu.Lock()
 	server.kernelSettings = *input
 	server.kernelSettings.Flags = input.Flags & (CAP_ASYNC_READ | CAP_BIG_WRITES | CAP_FILE_OPS |
-		CAP_AUTO_INVAL_DATA | CAP_READDIRPLUS)
+		CAP_AUTO_INVAL_DATA | CAP_READDIRPLUS | CAP_NO_OPEN_SUPPORT)
 
 	if input.Minor >= 13 {
 		server.setSplice()
@@ -96,6 +101,14 @@ func doInit(server *Server, req *request) {
 	}
 	if out.Minor > input.Minor {
 		out.Minor = input.Minor
+	}
+
+	if out.Minor <= 22 {
+		tweaked := *req.handler
+
+		// v8-v22 don't have TimeGran and further fields.
+		tweaked.OutputSize = 24
+		req.handler = &tweaked
 	}
 
 	req.outData = unsafe.Pointer(out)
@@ -160,11 +173,16 @@ const _SECURITY_ACL = "system.posix_acl_access"
 const _SECURITY_ACL_DEFAULT = "system.posix_acl_default"
 
 func doGetXAttr(server *Server, req *request) {
+	if server.opts.DisableXAttrs {
+		req.status = ENOSYS
+		return
+	}
+
 	if server.opts.IgnoreSecurityLabels && req.inHeader.Opcode == _OP_GETXATTR {
 		fn := req.filenames[0]
 		if fn == _SECURITY_CAPABILITY || fn == _SECURITY_ACL_DEFAULT ||
 			fn == _SECURITY_ACL {
-			req.status = ENODATA
+			req.status = ENOATTR
 			return
 		}
 	}
@@ -175,6 +193,9 @@ func doGetXAttr(server *Server, req *request) {
 		out := (*GetXAttrOut)(req.outData)
 		switch req.inHeader.Opcode {
 		case _OP_GETXATTR:
+			// TODO(hanwen): double check this. For getxattr, input.Size
+			// field refers to the size of the attribute, so it usually
+			// is not 0.
 			sz, code := server.fileSystem.GetXAttrSize(req.inHeader, req.filenames[0])
 			if code.Ok() {
 				out.Size = uint32(sz)
@@ -220,12 +241,14 @@ func doGetAttr(server *Server, req *request) {
 	req.status = s
 }
 
+// doForget - forget one NodeId
 func doForget(server *Server, req *request) {
 	if !server.opts.RememberInodes {
 		server.fileSystem.Forget(req.inHeader.NodeId, (*ForgetIn)(req.inData).Nlookup)
 	}
 }
 
+// doBatchForget - forget a list of NodeIds
 func doBatchForget(server *Server, req *request) {
 	in := (*_BatchForgetIn)(req.inData)
 	wantBytes := uintptr(in.Count) * unsafe.Sizeof(_ForgetOne{})
@@ -242,7 +265,10 @@ func doBatchForget(server *Server, req *request) {
 	}
 
 	forgets := *(*[]_ForgetOne)(unsafe.Pointer(h))
-	for _, f := range forgets {
+	for i, f := range forgets {
+		if server.opts.Debug {
+			log.Printf("doBatchForget: forgetting %d of %d: NodeId: %d, Nlookup: %d", i+1, len(forgets), f.NodeId, f.Nlookup)
+		}
 		server.fileSystem.Forget(f.NodeId, f.Nlookup)
 	}
 }
@@ -569,6 +595,7 @@ func init() {
 		_OP_NOTIFY_INODE:  func(ptr unsafe.Pointer) interface{} { return (*NotifyInvalInodeOut)(ptr) },
 		_OP_NOTIFY_DELETE: func(ptr unsafe.Pointer) interface{} { return (*NotifyInvalDeleteOut)(ptr) },
 		_OP_STATFS:        func(ptr unsafe.Pointer) interface{} { return (*StatfsOut)(ptr) },
+		_OP_SYMLINK:       func(ptr unsafe.Pointer) interface{} { return (*EntryOut)(ptr) },
 	} {
 		operationHandlers[op].DecodeOut = f
 	}

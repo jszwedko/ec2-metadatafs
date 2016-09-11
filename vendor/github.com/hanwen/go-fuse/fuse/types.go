@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package fuse
 
 import (
@@ -61,6 +65,13 @@ type RenameIn struct {
 	Newdir uint64
 }
 
+type Rename2In struct {
+	InHeader
+	Newdir  uint64
+	Flags   uint32
+	Padding uint32
+}
+
 type LinkIn struct {
 	InHeader
 	Oldnodeid uint64
@@ -82,6 +93,7 @@ const ( // SetAttrIn.Valid
 	FATTR_ATIME_NOW = (1 << 7)
 	FATTR_MTIME_NOW = (1 << 8)
 	FATTR_LOCKOWNER = (1 << 9)
+	FATTR_CTIME     = (1 << 10)
 )
 
 type SetAttrInCommon struct {
@@ -94,10 +106,10 @@ type SetAttrInCommon struct {
 	LockOwner uint64
 	Atime     uint64
 	Mtime     uint64
-	Unused2   uint64
+	Ctime     uint64
 	Atimensec uint32
 	Mtimensec uint32
-	Unused3   uint32
+	Ctimensec uint32
 	Mode      uint32
 	Unused4   uint32
 	Owner
@@ -150,6 +162,9 @@ const (
 	CAP_AUTO_INVAL_DATA  = (1 << 12)
 	CAP_READDIRPLUS      = (1 << 13)
 	CAP_READDIRPLUS_AUTO = (1 << 14)
+	CAP_ASYNC_DIO        = (1 << 15)
+	CAP_WRITEBACK_CACHE  = (1 << 16)
+	CAP_NO_OPEN_SUPPORT  = (1 << 17)
 )
 
 type InitIn struct {
@@ -169,6 +184,8 @@ type InitOut struct {
 	MaxBackground       uint16
 	CongestionThreshold uint16
 	MaxWrite            uint32
+	TimeGran            uint32
+	Unused              [9]uint32
 }
 
 type _CuseInitIn struct {
@@ -324,13 +341,14 @@ type NotifyInvalDeleteOut struct {
 }
 
 const (
-	NOTIFY_POLL         = -1
-	NOTIFY_INVAL_INODE  = -2
-	NOTIFY_INVAL_ENTRY  = -3
-	NOTIFY_STORE        = -4
-	NOTIFY_RETRIEVE     = -5
+	//	NOTIFY_POLL         = -1
+	NOTIFY_INVAL_INODE = -2
+	NOTIFY_INVAL_ENTRY = -3
+	//	NOTIFY_STORE        = -4
+	//	NOTIFY_RETRIEVE     = -5
 	NOTIFY_INVAL_DELETE = -6
-	NOTIFY_CODE_MAX     = -6
+
+//	NOTIFY_CODE_MAX     = -6
 )
 
 type FlushIn struct {
