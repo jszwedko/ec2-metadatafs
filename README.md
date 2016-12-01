@@ -202,7 +202,7 @@ These credentials have access to query for the AWS API for tags -- example IAM p
 }
 ```
 
-See [Usage](#usage} section for more details on credential sources.
+See [Usage](#usage) section for more details on credential sources.
 
 ### Developing
 
