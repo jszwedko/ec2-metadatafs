@@ -149,7 +149,8 @@ func (fs *MetadataFs) Open(name string, flags uint32, context *fuse.Context) (fi
 			return nil, fuse.EIO
 		}
 
-		return nodefs.NewDataFile(body), fuse.OK
+		newlinebody := append(body, 0x0a) // newline
+		return nodefs.NewDataFile(newlinebody), fuse.OK
 	default:
 		log.Printf("[ERROR] unknown HTTP status code from AWS metadata API: %d", resp.StatusCode)
 		return nil, fuse.EIO
