@@ -4,6 +4,10 @@ Changes:
 * Support for caching file and directory attributes as well as directory
   listings via `cachesec`
 
+Bug fixes:
+* Wait for daemonized process to notify when mounting before exiting. This will
+  help users determine if it mounted correctly or not.
+
 ## 0.3.0 (August 23, 2016)
 
 Changes:

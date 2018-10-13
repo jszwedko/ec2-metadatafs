@@ -5,9 +5,11 @@ import (
 	"log"
 	"log/syslog"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -206,7 +208,7 @@ func mountTags(nfs *pathfs.PathNodeFs, options *Options, logger *logging.Logger)
 	}
 }
 
-func mountAndServe(options *Options, logger *logging.Logger) {
+func prepareServer(options *Options, logger *logging.Logger) *fuse.Server {
 	var fs pathfs.FileSystem
 
 	logger.Debugf("mounting at %s directed at %s with options: %+v", options.Args.Mountpoint, options.Endpoint, options.MountOptions.opts)
@@ -241,7 +243,40 @@ func mountAndServe(options *Options, logger *logging.Logger) {
 			logger.Debugf("tags mounted")
 		}()
 	}
-	server.Serve()
+
+	return server
+}
+
+// signal the parent of our process that we started successfully so it can exit
+func sigalParent(logger *logging.Logger) {
+	pid, err := strconv.Atoi(os.Getenv("EC2_METADATAFS_NOTIFY"))
+	if err != nil {
+		logger.Warningf("unable to decode parent pid for notification: %s", err)
+		return
+	}
+
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		logger.Warningf("unable to find parent pid for notification: %s", err)
+		return
+	}
+
+	err = p.Signal(syscall.SIGUSR1)
+	if err != nil {
+		logger.Warningf("unable to find notify parent: %s", err)
+	}
+}
+
+func waitForSignal(logger *logging.Logger) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGUSR1)
+
+	select {
+	case <-c:
+		logger.Infof("child process successfully mounted")
+	case <-time.After(time.Second * 5):
+		logger.Fatalf("timeout waiting for child process to mount, try running in the foreground")
+	}
 }
 
 func main() {
@@ -391,7 +426,7 @@ Report bugs to:
 	}
 
 	if options.Foreground {
-		mountAndServe(options, logger)
+		prepareServer(options, logger).Serve()
 		return
 	}
 
@@ -400,7 +435,8 @@ Report bugs to:
 		logger.EnableSyslog(syslogFacility)
 	}
 
-	context := new(daemon.Context)
+	context := &daemon.Context{Env: append(os.Environ(), fmt.Sprintf("EC2_METADATAFS_NOTIFY=%d", os.Getpid()))}
+
 	child, err := context.Reborn()
 	if err != nil {
 		logger.Fatalf("fork fail: %s", err)
@@ -408,8 +444,15 @@ Report bugs to:
 
 	if child == nil {
 		defer context.Release()
-		mountAndServe(options, logger)
+
+		server := prepareServer(options, logger)
+		go func() {
+			server.WaitMount()
+			sigalParent(logger)
+		}()
+		server.Serve()
 	} else {
 		logger.Infof("forked child with PID %d", child.Pid)
+		waitForSignal(logger)
 	}
 }
