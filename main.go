@@ -244,6 +244,18 @@ func prepareServer(options *Options, logger *logging.Logger) *fuse.Server {
 		}()
 	}
 
+	// Unmount when the process exits
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-ch
+		err := server.Unmount()
+		if err != nil {
+			logger.Warningf("could not unmount: %s", err)
+		}
+		os.Exit(1)
+	}()
+
 	return server
 }
 

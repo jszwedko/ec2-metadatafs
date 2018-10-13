@@ -7,6 +7,7 @@ Changes:
 Bug fixes:
 * Wait for daemonized process to notify when mounting before exiting. This will
   help users determine if it mounted correctly or not.
+* Unmount when process is sent SIGINT or SIGTERM
 
 ## 0.3.0 (August 23, 2016)
 
