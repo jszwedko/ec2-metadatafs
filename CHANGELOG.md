@@ -1,3 +1,9 @@
+## Unreleased
+
+Changes:
+* Support for caching file and directory attributes as well as directory
+  listings via `cachesec`
+
 ## 0.3.0 (August 23, 2016)
 
 Changes:

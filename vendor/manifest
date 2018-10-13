@@ -40,6 +40,15 @@
 			"path": "/splice"
 		},
 		{
+			"importpath": "github.com/hanwen/go-fuse/unionfs",
+			"repository": "https://github.com/hanwen/go-fuse",
+			"vcs": "git",
+			"revision": "fcb5b5b5c49286fb33e674534c18195d84abe8ef",
+			"branch": "master",
+			"path": "/unionfs",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/hashicorp/logutils",
 			"repository": "https://github.com/hashicorp/logutils",
 			"vcs": "git",

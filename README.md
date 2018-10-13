@@ -143,6 +143,7 @@ Application Options:
   -f, --foreground             Run in foreground
   -V, --version                Display version info
   -e, --endpoint=              EC2 metadata service HTTP endpoint (default: http://169.254.169.254/latest/)
+  -c, --cachesec=              Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for indefinite. (default: 0)
   -t, --tags                   Mount EC2 instance tags at <mount point>/tags
   -o, --options=               Mount options, see below for description
 
@@ -163,6 +164,7 @@ Mount options:
   -o aws_access_key_id=ID      AWS API access key (see below), same as --aws-access-key-id=
   -o aws_secret_access_key=KEY AWS API secret key (see below), same as --aws-secret-access-key=
   -o aws_session_token=KEY     AWS API session token (see below), same as --aws-session-token=
+  -o cachesec=SEC              Number of seconds to cache files attributes and directory listings, same as --cachesec
   -o FUSEOPTION=OPTIONVALUE    FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 
 AWS credential chain:
@@ -176,6 +178,14 @@ AWS credential chain:
   - IAM role associated with the instance
 
   Note that the AWS session token is only needed for temporary credentials from AWS security token service.
+
+Caching:
+
+Caching of the following is supported and controlled via the cachesec parameter:
+
+* File attributes
+* Directory attributes
+* Directory listings
 ```
 
 ### AWS permissions
