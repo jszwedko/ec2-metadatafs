@@ -11,6 +11,7 @@ Bug fixes:
 * Wait for daemonized process to notify when mounting before exiting. This will
   help users determine if it mounted correctly or not
 * Unmount when process is sent SIGINT or SIGTERM
+* Don't return user-data in directory listing of / if it isn't set on the instance
 
 ## 0.3.0 (August 23, 2016)
 
