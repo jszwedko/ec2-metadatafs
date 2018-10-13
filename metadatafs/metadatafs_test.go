@@ -225,6 +225,31 @@ func TestMetadatFs_OpenDir(t *testing.T) {
 	}
 }
 
+// Test edge case where / always returns user-data even if user-data is not set (404s)
+func TestMetadatFs_OpenDir_userDataNoEnt(t *testing.T) {
+	mux, dir, cleanup := setup(t)
+	defer cleanup()
+
+	serveDirectory(mux, "/", []string{"dynamic", "meta-data", "user-data"}, time.Now())
+	mux.HandleFunc("/user-data", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+	})
+
+	fileInfos, err := ioutil.ReadDir(path.Join(dir, "/"))
+	if err != nil {
+		t.Fatalf(`error listing directory: %s`, err)
+	}
+
+	names := make([]string, len(fileInfos))
+	for i, fileInfo := range fileInfos {
+		names[i] = fileInfo.Name()
+	}
+
+	if !reflect.DeepEqual([]string{"dynamic", "meta-data"}, names) {
+		t.Errorf(`returned entries %+v, expected %+v`, names, []string{"dynamic", "meta-data"})
+	}
+}
+
 // Test edge case where meta-data/public-keys returns differently formatted HTTP response
 func TestMetadatFs_OpenDir_publicKeys(t *testing.T) {
 	mux, dir, cleanup := setup(t)

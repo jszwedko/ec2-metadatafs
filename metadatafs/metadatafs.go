@@ -113,6 +113,15 @@ func (fs *MetadataFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirE
 				continue
 			}
 
+			// special case for user-data which is always returned as a listing, but can be non-existent
+			// as far as I can tell, this is the only path that this happens with
+			switch file {
+			case "user-data":
+				if _, status := fs.GetAttr(path.Join(name, file), context); status == fuse.ENOENT {
+					continue
+				}
+			}
+
 			if isDir(path.Join(name, file)) {
 				fs.Logger.Debugf("adding dir entry for '%s' as directory", file)
 				dirEntries = append(dirEntries, fuse.DirEntry{Name: file, Mode: fuse.S_IFDIR})
