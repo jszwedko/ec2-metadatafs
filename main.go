@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"log/syslog"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -18,11 +20,16 @@ import (
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/go-fuse/unionfs"
-	"github.com/hashicorp/logutils"
 	"github.com/jessevdk/go-flags"
+	"github.com/jszwedko/ec2-metadatafs/internal/logging"
 	"github.com/jszwedko/ec2-metadatafs/metadatafs"
 	"github.com/jszwedko/ec2-metadatafs/tagsfs"
 	"github.com/sevlyar/go-daemon"
+)
+
+const (
+	verbose     = 1
+	moreVerbose = 2
 )
 
 var (
@@ -30,12 +37,55 @@ var (
 	VersionString string
 	// RevisionString is the git rev this binary is associated with
 	RevisionString string
+
+	facilityMap = map[string]syslog.Priority{
+		"KERN":     syslog.LOG_KERN,
+		"USER":     syslog.LOG_USER,
+		"MAIL":     syslog.LOG_MAIL,
+		"DAEMON":   syslog.LOG_DAEMON,
+		"AUTH":     syslog.LOG_AUTH,
+		"SYSLOG":   syslog.LOG_SYSLOG,
+		"LPR":      syslog.LOG_LPR,
+		"NEWS":     syslog.LOG_NEWS,
+		"UUCP":     syslog.LOG_UUCP,
+		"CRON":     syslog.LOG_CRON,
+		"AUTHPRIV": syslog.LOG_AUTHPRIV,
+		"FTP":      syslog.LOG_FTP,
+
+		"LOCAL0": syslog.LOG_LOCAL0,
+		"LOCAL1": syslog.LOG_LOCAL1,
+		"LOCAL2": syslog.LOG_LOCAL2,
+		"LOCAL3": syslog.LOG_LOCAL3,
+		"LOCAL4": syslog.LOG_LOCAL4,
+		"LOCAL5": syslog.LOG_LOCAL5,
+		"LOCAL6": syslog.LOG_LOCAL6,
+		"LOCAL7": syslog.LOG_LOCAL7,
+	}
 )
 
-const (
-	verbose     = 1
-	moreVerbose = 2
-)
+func sortedValidFacilities() []string {
+	facilities := FacilityNamesSlice(make([]string, 0, len(facilityMap)))
+	for k := range facilityMap {
+		facilities = append(facilities, k)
+	}
+	sort.Sort(facilities)
+	return facilities
+}
+
+// FacilityNamesSlice supports sorting of facility names
+type FacilityNamesSlice []string
+
+func (f FacilityNamesSlice) Len() int {
+	return len(f)
+}
+
+func (f FacilityNamesSlice) Less(i, j int) bool {
+	return facilityMap[f[i]] < facilityMap[f[j]]
+}
+
+func (f FacilityNamesSlice) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
 
 // Options holds the command line arguments and flags
 // Intended for use with go-flags
@@ -47,6 +97,9 @@ type Options struct {
 	CacheSec     int          `short:"c" long:"cachesec"    description:"Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for indefinite." default:"0"`
 	Tags         bool         `short:"t" long:"tags"        description:"Mount EC2 instance tags at <mount point>/tags"`
 	MountOptions mountOptions `short:"o" long:"options"     description:"Mount options, see below for description"`
+
+	DisableSyslog  bool   `short:"n" long:"no-syslog"        description:"Disable syslog when daemonized"`
+	SyslogFacility string `short:"F" long:"syslog-facility"  description:"Syslog facility to use when daemonized (see below for options)" default:"USER"`
 
 	AWSCredentials awsCredentials `group:"AWS Credentials (only used when mounting tags)"`
 
@@ -129,15 +182,15 @@ func (o *mountOptions) ExtractOption(s string) (ok bool, value string) {
 
 // mountTags mounts another endpoint onto the FUSE FS at tags/ exposing the EC2
 // instance tags as files
-func mountTags(nfs *pathfs.PathNodeFs, options *Options) {
+func mountTags(nfs *pathfs.PathNodeFs, options *Options, logger *logging.Logger) {
 	svc := ec2metadata.New(session.New())
 	instanceID, err := svc.GetMetadata("instance-id")
 	if err != nil {
-		log.Fatalf("[FATAL] failed to query instance id to initialize tags mount: %v\n", err)
+		logger.Fatalf("failed to query instance id to initialize tags mount: %v\n", err)
 	}
 	region, err := svc.Region()
 	if err != nil {
-		log.Fatalf("[FATAL] failed to query instance region to initialize tags mount: %v\n", err)
+		logger.Fatalf("failed to query instance region to initialize tags mount: %v\n", err)
 	}
 
 	sess := session.New(&aws.Config{
@@ -147,25 +200,25 @@ func mountTags(nfs *pathfs.PathNodeFs, options *Options) {
 
 	status := nfs.Mount(
 		"tags",
-		pathfs.NewPathNodeFs(tagsfs.New(ec2.New(sess), instanceID), nil).Root(), nil)
+		pathfs.NewPathNodeFs(tagsfs.New(ec2.New(sess), instanceID, logger), nil).Root(), nil)
 	if status != fuse.OK {
-		log.Fatalf("[FATAL] tags mount fail: %v\n", status)
+		logger.Fatalf("tags mount fail: %v\n", status)
 	}
 }
 
-func mountAndServe(options *Options) {
+func mountAndServe(options *Options, logger *logging.Logger) {
 	var fs pathfs.FileSystem
 
-	log.Printf("[DEBUG] mounting at %s directed at %s with options: %+v", options.Args.Mountpoint, options.Endpoint, options.MountOptions.opts)
-	fs = metadatafs.New(options.Endpoint)
+	logger.Debugf("mounting at %s directed at %s with options: %+v", options.Args.Mountpoint, options.Endpoint, options.MountOptions.opts)
+	fs = metadatafs.New(options.Endpoint, logger)
 	switch {
 	case options.CacheSec == 0:
-		log.Printf("[DEBUG] caching disabled")
+		logger.Debugf("caching disabled")
 	case options.CacheSec <= 0:
-		log.Printf("[DEBUG] indefinite caching enabled")
+		logger.Debugf("indefinite caching enabled")
 		fs = unionfs.NewCachingFileSystem(fs, time.Duration(-1)*time.Second)
 	default:
-		log.Printf("[DEBUG] caching enabled (%d seconds)", options.CacheSec)
+		logger.Debugf("caching enabled (%d seconds)", options.CacheSec)
 		fs = unionfs.NewCachingFileSystem(fs, time.Duration(options.CacheSec)*time.Second)
 	}
 
@@ -175,7 +228,7 @@ func mountAndServe(options *Options) {
 		options.Args.Mountpoint,
 		&fuse.MountOptions{Options: options.MountOptions.opts})
 	if err != nil {
-		log.Fatalf("mount fail: %v\n", err)
+		logger.Fatalf("mount fail: %v\n", err)
 	}
 
 	server.SetDebug(len(options.Verbose) >= moreVerbose)
@@ -183,41 +236,57 @@ func mountAndServe(options *Options) {
 	if options.Tags {
 		go func() {
 			server.WaitMount()
-			log.Printf("[DEBUG] mounting tags")
-			mountTags(nfs, options)
-			log.Printf("[DEBUG] tags mounted")
+			logger.Debugf("mounting tags")
+			mountTags(nfs, options, logger)
+			logger.Debugf("tags mounted")
 		}()
 	}
-	log.Printf("[DEBUG] mounting")
 	server.Serve()
 }
 
 func main() {
 	options := &Options{}
 
+	logger := logging.NewLogger()
+	defer logger.Close()
+
+	// go-fuse logging uses the stdlib logger
+	debugWriter := logger.Writer(logging.DebugLevel)
+	defer debugWriter.Close()
+	log.SetOutput(debugWriter)
+	log.SetFlags(0)
+
 	parser := flags.NewParser(options, flags.HelpFlag|flags.PassDoubleDash)
 	parser.LongDescription = `
-ec2metadafs mounts a FUSE filesystem which exposes the EC2 instance metadata
+ec2metadatafs mounts a FUSE filesystem which exposes the EC2 instance metadata
 (and optionally the tags) of the host as files and directories rooted at the
 given location.`
 
 	_, err := parser.Parse()
+	if err, ok := err.(*flags.Error); err != nil && (!ok || err.Type != flags.ErrHelp) {
+		logger.Fatalf("error parsing command line options: %s", err)
+	}
 
 	if options.Version {
 		fmt.Printf("%s (%s)\n", VersionString, RevisionString)
 		os.Exit(0)
 	}
 
+	fmt.Println(parser.FindOptionByLongName("help").IsSet())
 	if parser.FindOptionByLongName("help").IsSet() {
 		parser.WriteHelp(os.Stdout)
 		fmt.Printf(`
 Mount options:
+  -o debug                     Enable debug logging, same as -v
+  -o fuse_debug                Enable fuse_debug logging (implies debug), same as -vv
   -o endpoint=ENDPOINT         EC2 metadata service HTTP endpoint, same as --endpoint=
   -o tags                      Mount the instance tags at <mount point>/tags, same as --tags
   -o aws_access_key_id=ID      AWS API access key (see below), same as --aws-access-key-id=
   -o aws_secret_access_key=KEY AWS API secret key (see below), same as --aws-secret-access-key=
   -o aws_session_token=KEY     AWS API session token (see below), same as --aws-session-token=
   -o cachesec=SEC              Number of seconds to cache files attributes and directory listings, same as --cachesec
+  -o syslog_facility=					 Syslog facility to send messages upon when daemonized (see below)
+  -o no_syslog                 Disable logging to syslog when daemonized
   -o FUSEOPTION=OPTIONVALUE    FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 
 AWS credential chain:
@@ -245,6 +314,9 @@ by cachesec. Use 0, the default, to disable caching and -1 to cache
 indefinitely (good if you never expect instance metadata to change). This cache
 is kept in memory and lost when the process is restarted.
 
+Valid syslog facilities:
+  %s
+
 Version:
   %s (%s)
 
@@ -256,7 +328,7 @@ Project Homepage:
 
 Report bugs to:
   http://github.com/jszwedko/ec2-metadatafs/issues
-`, VersionString, RevisionString)
+`, strings.Join(sortedValidFacilities(), ", "), VersionString, RevisionString)
 		os.Exit(0)
 	}
 
@@ -293,32 +365,51 @@ Report bugs to:
 		options.Tags = true
 	}
 
-	filter := &logutils.LevelFilter{
-		Levels:   []logutils.LogLevel{"DEBUG", "WARN", "ERROR", "FATAL"},
-		MinLevel: logutils.LogLevel("WARN"),
-		Writer:   os.Stderr,
+	if ok, _ := options.MountOptions.ExtractOption("no_syslog"); ok {
+		options.DisableSyslog = true
 	}
+
+	if ok, value := options.MountOptions.ExtractOption("syslog_facility"); ok {
+		options.SyslogFacility = value
+	}
+
+	if ok, _ := options.MountOptions.ExtractOption("debug"); ok {
+		options.Verbose = []bool{true}
+	}
+
+	if ok, _ := options.MountOptions.ExtractOption("fuse_debug"); ok {
+		options.Verbose = []bool{true, true}
+	}
+
+	syslogFacility, ok := facilityMap[options.SyslogFacility]
+	if !ok {
+		logger.Fatalf("unrecognized syslog facility: %s", options.SyslogFacility)
+	}
+
 	if len(options.Verbose) >= verbose {
-		filter.MinLevel = logutils.LogLevel("DEBUG")
+		logger.MinLevel = logging.DebugLevel
 	}
-	log.SetOutput(filter)
 
 	if options.Foreground {
-		mountAndServe(options)
+		mountAndServe(options, logger)
 		return
 	}
 
 	// daemonize
+	if !options.DisableSyslog {
+		logger.EnableSyslog(syslogFacility)
+	}
+
 	context := new(daemon.Context)
 	child, err := context.Reborn()
 	if err != nil {
-		log.Fatalf("fork fail: %v\n", err)
+		logger.Fatalf("fork fail: %s", err)
 	}
 
 	if child == nil {
 		defer context.Release()
-		mountAndServe(options)
+		mountAndServe(options, logger)
 	} else {
-		log.Printf("forked child with PID %d", child.Pid)
+		logger.Infof("forked child with PID %d", child.Pid)
 	}
 }
