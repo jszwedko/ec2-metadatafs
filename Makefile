@@ -12,7 +12,7 @@ LINT := $(GOBIN)/golint
 GOX := $(GOBIN)/gox
 PACKAGES := $$(go list ./... | grep -v '/vendor/')
 
-$(LINT): ; @go get github.com/golang/lint/golint
+$(LINT): ; @go get golang.org/x/lint/golint
 $(GOX): ; @go get -v github.com/mitchellh/gox
 
 .PHONY: build
