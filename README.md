@@ -102,7 +102,7 @@ Feedback and feature requests are welcome!
 #### Linux (64 bit)
 
 ```bash
-curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.2.0/linux_amd64 > ec2-metadatafs
+curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.4.0/linux_amd64 > ec2-metadatafs
 sudo mv ec2-metadatafs /usr/bin/
 sudo chmod +x /usr/bin/ec2-metadatafs
 ```
@@ -110,7 +110,7 @@ sudo chmod +x /usr/bin/ec2-metadatafs
 #### Linux (32 bit)
 
 ```bash
-curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.2.0/linux_386 > ec2-metadatafs
+curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.4.0/linux_386 > ec2-metadatafs
 sudo mv ec2-metadatafs /usr/bin/
 sudo chmod +x /usr/bin/ec2-metadatafs
 ```
@@ -134,7 +134,7 @@ if you want to mount the tags as well (requires AWS API credentials -- described
 Usage:
   ec2-metadatafs [OPTIONS] mountpoint
 
-ec2metadafs mounts a FUSE filesystem which exposes the EC2 instance metadata
+ec2metadatafs mounts a FUSE filesystem which exposes the EC2 instance metadata
 (and optionally the tags) of the host as files and directories rooted at the
 given location.
 
@@ -143,9 +143,12 @@ Application Options:
   -f, --foreground             Run in foreground
   -V, --version                Display version info
   -e, --endpoint=              EC2 metadata service HTTP endpoint (default: http://169.254.169.254/latest/)
-  -c, --cachesec=              Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for indefinite. (default: 0)
+  -c, --cachesec=              Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for
+                               indefinite. (default: 0)
   -t, --tags                   Mount EC2 instance tags at <mount point>/tags
   -o, --options=               Mount options, see below for description
+  -n, --no-syslog              Disable syslog when daemonized
+  -F, --syslog-facility=       Syslog facility to use when daemonized (see below for options) (default: USER)
 
 AWS Credentials (only used when mounting tags):
       --aws-access-key-id=     AWS Access Key ID (adds to credential chain, see below)
@@ -159,12 +162,16 @@ Arguments:
   mountpoint:                  Directory to mount the filesystem at
 
 Mount options:
+  -o debug                     Enable debug logging, same as -v
+  -o fuse_debug                Enable fuse_debug logging (implies debug), same as -vv
   -o endpoint=ENDPOINT         EC2 metadata service HTTP endpoint, same as --endpoint=
   -o tags                      Mount the instance tags at <mount point>/tags, same as --tags
   -o aws_access_key_id=ID      AWS API access key (see below), same as --aws-access-key-id=
   -o aws_secret_access_key=KEY AWS API secret key (see below), same as --aws-secret-access-key=
   -o aws_session_token=KEY     AWS API session token (see below), same as --aws-session-token=
   -o cachesec=SEC              Number of seconds to cache files attributes and directory listings, same as --cachesec
+  -o syslog_facility=                                    Syslog facility to send messages upon when daemonized (see below)
+  -o no_syslog                 Disable logging to syslog when daemonized
   -o FUSEOPTION=OPTIONVALUE    FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 
 AWS credential chain:
@@ -186,6 +193,26 @@ Caching of the following is supported and controlled via the cachesec parameter:
 * File attributes
 * Directory attributes
 * Directory listings
+
+When accessed this metadata will be cached for the number of seconds specified
+by cachesec. Use 0, the default, to disable caching and -1 to cache
+indefinitely (good if you never expect instance metadata to change). This cache
+is kept in memory and lost when the process is restarted.
+
+Valid syslog facilities:
+  KERN, USER, MAIL, DAEMON, AUTH, SYSLOG, LPR, NEWS, UUCP, CRON, AUTHPRIV, FTP, LOCAL0, LOCAL1, LOCAL2, LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7
+
+Version:
+  0.3.0-16-gb73643f-dirty ('b73643f6a5aface7e405429779e8554a7b3767c8')
+
+Author:
+  Jesse Szwedko
+
+Project Homepage:
+  http://github.com/jszwedko/ec2-metadatafs
+
+Report bugs to:
+  http://github.com/jszwedko/ec2-metadatafs/issues
 ```
 
 ### AWS permissions
