@@ -264,5 +264,4 @@ Uses [`gvt`](https://github.com/FiloSottile/gvt) to manipulate dependencies.
 
 - Building: `make build`
 - Testing: `make test`
-- Building cross compiled binaries: `make dist` (will install
-  [gox](https://github.com/mitchellh/gox) if needed)
+- Building cross compiled binaries: `make dist` (will install [gox](https://github.com/mitchellh/gox) if needed)
