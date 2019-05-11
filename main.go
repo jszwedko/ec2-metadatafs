@@ -319,7 +319,6 @@ given location.`
 		os.Exit(0)
 	}
 
-	fmt.Println(parser.FindOptionByLongName("help").IsSet())
 	if parser.FindOptionByLongName("help").IsSet() {
 		parser.WriteHelp(os.Stdout)
 		fmt.Printf(`
