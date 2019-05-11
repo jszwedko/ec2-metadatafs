@@ -25,8 +25,8 @@ deploy:
   file:
   - dist/*
   skip_cleanup: true
-  tags: true
   on:
+    tags: true
     repo: jszwedko/ec2-metadatafs
 notifications:
   email: jesse.szwedko@gmail.com
