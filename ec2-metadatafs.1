@@ -1,0 +1,142 @@
+.\" Manpage for ec2-metadatafs
+.\" Contact vivek@nixcraft.net.in to correct errors or typos.
+
+.TH ec2-metadatafs 1 "May 2019" "ec2-metadatafs version 0.4.0" "User Commands"
+.SH NAME
+ec2\-metadatafs \- filesystem client to access AWS EC2 metadata and tags
+.SH SYNOPSIS
+.SS mounting
+\fBec2\-metadatafs\fP [OPTIONS] [mountpoint]
+.SS unmounting
+\fBumount\fP [mountpoint]
+.SH DESCRIPTION
+ec2metadatafs mounts a FUSE filesystem which exposes the EC2 instance metadata
+(and optionally the tags) of the AWS EC2 host as files and directories rooted at
+the given location.
+.PP
+.SH OPTIONS
+.SS "Application Options:"
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Print verbose logs, can be specified multiple times (up to 2)
+.TP
+\fB\-f\fR, \fB\-\-foreground\fR
+Run in foreground
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Display version info
+.TP
+\fB\-e\fR, \fB\-\-endpoint=\fR
+EC2 metadata service HTTP endpoint (default: http://169.254.169.254/latest/)
+.TP
+\fB\-c\fR, \fB\-\-cachesec=\fR
+Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for indefinite. (default: 0)
+.TP
+\fB\-t\fR, \fB\-\-tags\fR
+Mount EC2 instance tags at <mount point>/tags
+.TP
+\fB\-o\fR, \fB\-\-options=\fR
+Mount options, see below for description
+.TP
+\fB\-n\fR, \fB\-\-no\-syslog\fR
+Disable syslog when daemonized
+.TP
+\fB\-F\fR, \fB\-\-syslog\-facility=\fR
+Syslog facility to use when daemonized (see below for options) (default: USER)
+.SS "AWS Credentials (only used when mounting tags):"
+.TP
+\fB\-\-aws\-access\-key\-id=\fR
+AWS Access Key ID (adds to credential chain, see below)
+.HP
+\fB\-\-aws\-secret\-access\-key=\fR AWS Secret Access key (adds to credential chain, see below)
+.TP
+\fB\-\-aws\-session\-token=\fR
+AWS session token (adds to credential chain, see below)
+.SS "Help Options:"
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Show this help message
+.SS "Arguments:"
+.TP
+mountpoint:
+Directory to mount the filesystem at
+.SS "Mount options:"
+.TP
+\fB\-o\fR debug
+Enable debug logging, same as \fB\-v\fR
+.TP
+\fB\-o\fR fuse_debug
+Enable fuse_debug logging (implies debug), same as \fB\-vv\fR
+.TP
+\fB\-o\fR endpoint=ENDPOINT
+EC2 metadata service HTTP endpoint, same as \fB\-\-endpoint=\fR
+.TP
+\fB\-o\fR tags
+Mount the instance tags at <mount point>/tags, same as \fB\-\-tags\fR
+.TP
+\fB\-o\fR aws_access_key_id=ID
+AWS API access key (see below), same as \fB\-\-aws\-access\-key\-id=\fR
+.HP
+\fB\-o\fR aws_secret_access_key=KEY AWS API secret key (see below), same as \fB\-\-aws\-secret\-access\-key=\fR
+.TP
+\fB\-o\fR aws_session_token=KEY
+AWS API session token (see below), same as \fB\-\-aws\-session\-token=\fR
+.TP
+\fB\-o\fR cachesec=SEC
+Number of seconds to cache files attributes and directory listings, same as \fB\-\-cachesec\fR
+.TP
+\fB\-o\fR syslog_facility=
+Syslog facility to send messages upon when daemonized (see below)
+.TP
+\fB\-o\fR no_syslog
+Disable logging to syslog when daemonized
+.TP
+\fB\-o\fR FUSEOPTION=OPTIONVALUE
+FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
+.SS "AWS credential chain:"
+.TP
+AWS credentials only required when mounting the instance tags (\fB\-\-tags\fR or \fB\-o\fR tags).
+.TP
+Checks for credentials in the following places, in order:
+.RS
+Provided AWS credentials via flags or mount options
+.TP
+$AWS_ACCESS_KEY_ID, $AWS_SECRET_ACCESS_KEY, and $AWS_SESSION_TOKEN environment variables
+.TP
+Shared credentials file \fB\-\-\fR respects $AWS_DEFAULT_PROFILE and $AWS_SHARED_CREDENTIALS_FILE
+.TP
+IAM role associated with the instance
+.TP
+.RE
+.TP
+Note that the AWS session token is only needed for temporary credentials from AWS security token service.
+.PP
+.SS Caching:
+.TP
+Caching of the following is supported and controlled via the cachesec parameter:
+.RS
+.TP
+File attributes
+.TP
+Directory attributes
+.TP
+Directory listings
+.RE
+.TP
+When accessed this metadata will be cached for the number of seconds specified by cachesec. Use 0, the default, to disable caching and -1 to cache indefinitely (good if you never expect instance metadata to change). This cache is kept in memory and lost when the process is restarted.
+.SS "Valid syslog facilities:"
+.IP
+KERN, USER, MAIL, DAEMON, AUTH, SYSLOG, LPR, NEWS, UUCP, CRON, AUTHPRIV, FTP, LOCAL0, LOCAL1, LOCAL2, LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7
+.SS "Version:"
+.IP
+0.4.0\-1\-gb084090\-dirty ('b0840905971be574bca1ba074e4b0b24a38df4b9')
+.SS "Author:"
+.IP
+Jesse Szwedko
+.SS "Project Homepage:"
+.IP
+http://github.com/jszwedko/ec2\-metadatafs
+.SH "REPORTING BUGS"
+.SS "Report bugs to:"
+.IP
+http://github.com/jszwedko/ec2\-metadatafs/issues

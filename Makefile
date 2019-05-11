@@ -1,7 +1,15 @@
 export GO15VENDOREXPERIMENT = 1
 
-VERSION := $(shell git describe --tags --always --dirty)
-REVISION := $(shell git rev-parse --sq HEAD)
+VERSION = 1.0.0
+
+PREFIX ?= /usr/local
+MANPREFIX ?= $(PREFIX)/share/man
+INSTALL ?= install
+
+BIN = ec2-metadatafs
+PACKAGES = $$(go list ./... | grep -v '/vendor/')
+BINPACKAGE := github.com/jszwedko/ec2-metadatafs
+
 .DEFAULT_GOAL := check
 
 ifndef GOBIN
@@ -10,18 +18,20 @@ endif
 
 LINT := $(GOBIN)/golint
 GOX := $(GOBIN)/gox
-PACKAGES := $$(go list ./... | grep -v '/vendor/')
 
 $(LINT): ; @go get golang.org/x/lint/golint
 $(GOX): ; @go get -v github.com/mitchellh/gox
 
 .PHONY: build
 build:
-	@go build -ldflags "-X main.VersionString=$(VERSION) -X main.RevisionString=$(REVISION)" $(PACKAGES)
+	@go build -ldflags "-X main.VersionString=$(VERSION)" -o $(BIN) $(BINPACKAGE)
 
 .PHONY: install
-install:
-	@go install -ldflags "-X main.VersionString=$(VERSION) -X main.RevisionString=$(REVISION)" $(PACKAGES)
+install: build
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) -m 0755 $(BIN) $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(MANPREFIX)/man1
+	$(INSTALL) -m 0644 $(BIN).1 $(DESTDIR)$(MANPREFIX)/man1
 
 .PHONY: dist
 dist: $(GOX)
