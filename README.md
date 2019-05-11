@@ -1,11 +1,11 @@
-## ec2-metadatafs [![Build Status](https://travis-ci.org/jszwedko/ec2-metadatafs.svg?branch=master)](https://travis-ci.org/jszwedko/ec2-metadatafs) [![Go Report Card](https://goreportcard.com/badge/github.com/jszwedko/ec2-metadatafs)](https://goreportcard.com/report/github.com/jszwedko/ec2-metadatafs)
+## ec2-metadatafs: `cat` your AWS EC2 metadata
 
-[FUSE](https://github.com/libfuse/libfuse) filesystem that exposes the [EC2
-metadata
-service](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html)
-and, optionally, the tags on the instance in the form of a readonly filesystem.
-This allows simple interaction interrogation of metadata using traditional unix
-utilities like `ls`, `grep`, and `cat`.
+[![Build Status](https://travis-ci.org/jszwedko/ec2-metadatafs.svg?branch=master)](https://travis-ci.org/jszwedko/ec2-metadatafs) [![Go Report Card](https://goreportcard.com/badge/github.com/jszwedko/ec2-metadatafs)](https://goreportcard.com/report/github.com/jszwedko/ec2-metadatafs)
+
+`ec2-metadatafs` exposes [AWS EC2
+metadata](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html) as a filesystem for easy `ls`,
+`cat`, and `grep`ing. It relies on [FUSE](https://github.com/libfuse/libfuse) to mount a user-space filesystem with
+files exposing the EC2 metadata and, optionally, the tags on the instance in the form of a readonly filesystem.
 
 Example:
 ```
@@ -74,7 +74,7 @@ $ tree /tmp/aws
 
 16 directories, 42 files
 $ cat /tmp/aws/meta-data/instance-id
-i-123456
+i-1234567890
 $ cat /tmp/aws/user-data
 #! /bin/bash
 echo 'Hello world'
@@ -84,20 +84,29 @@ My Instance Name
 
 ### Advantages over `curl http://169.254.169.254`
 
-* No need to remember the special IP address of the service
-* Can use traditional unix tools to walk and interrogate the tree
-* Tab completion of paths
 * **Support for tags**
+* Use filesystem permissions to control access
+* Use traditional unix tools to walk and interrogate the tree
+* Tab completion of paths
+* No need to remember the special IP address of the service
 
 ### Advantages over the [`ec2-metadata`](http://aws.amazon.com/code/1825) tool
 
-* No need to `cut` the output of commands to get just the field
-* Access to all metadata fields, not just the limited subset the tool returns
 * **Support for tags**
+* No need to `cut` the output of commands to get just the field
+* Can use filesystem permissions to control access
+* Access to all metadata fields, not just the limited subset the tool returns
 
 Feedback and feature requests are welcome!
 
 ## Installing
+
+### Release packages
+
+Packages are built for Arch Linux, CentOS, Debian, Fedora and Ubuntu. See
+[releases](https://github.com/jszwedko/ec2-metadatafs/releases) to install one of these.
+
+### Binary installation
 
 #### Linux (64 bit)
 
@@ -115,18 +124,10 @@ sudo mv ec2-metadatafs /usr/bin/
 sudo chmod +x /usr/bin/ec2-metadatafs
 ```
 
+### From source
+
 Install the latest via: `GOVENDOREXPERIMENT=1 go get
 github.com/jszwedko/ec2-metadatafs` (requires Go >= 1.5 to be installed).
-
-You can have it automatically mount by adding the following to `/etc/fstab`:
-
-`ec2-metadatafs   /aws    fuse    _netdev,allow_other    0    0`
-
-Or
-
-`ec2-metadatafs   /aws    fuse    _netdev,allow_other,tags    0    0`
-
-if you want to mount the tags as well (requires AWS API credentials -- described below).
 
 ## Usage
 
@@ -214,6 +215,18 @@ Project Homepage:
 Report bugs to:
   http://github.com/jszwedko/ec2-metadatafs/issues
 ```
+
+## Automatic mounting
+
+You can have it automatically mount by adding the following to `/etc/fstab`:
+
+`ec2-metadatafs   /aws    fuse    _netdev,allow_other    0    0`
+
+Or
+
+`ec2-metadatafs   /aws    fuse    _netdev,allow_other,tags    0    0`
+
+if you want to mount the tags as well (requires AWS API credentials -- described below).
 
 ### AWS permissions
 
