@@ -1,0 +1,77 @@
+name: ec2-metadatafs
+maintainer: Jesse Szwedko <jesse@szwedko.me>
+license: MIT
+summary: Filesystem client to access AWS EC2 metadata and tags.
+homepage: https://github.com/jszwedko/ec2-metadatafs
+commands:
+  compile:
+    - export GOPATH=${GOPATH:-$BP_SOURCEDIR}
+    - mkdir -p ${GOPATH}/src/github.com/jszwedko/ec2-metadatafs
+    - mv ${BP_SOURCEDIR}/* ${GOPATH}/src/github.com/jszwedko/ec2-metadatafs || true
+    - cd ${GOPATH}/src/github.com/jszwedko/ec2-metadatafs
+    - make build
+  install:
+    - export GOPATH=${GOPATH:-$BP_SOURCEDIR}
+    - cd ${GOPATH}/src/github.com/jszwedko/ec2-metadatafs
+    - make PREFIX="/usr" install DESTDIR="${BP_DESTDIR}"
+  testinstall:
+    - /usr/bin/ec2-metadatafs --version
+packages:
+  archlinux:
+    builddeps:
+      - go
+      - make
+    deps:
+      - fuse
+    container: "archlinux/base"
+  centos7.4:
+    builddeps:
+      - golang
+      - make
+    deps:
+      - fuse
+    commands:
+      pre:
+        - yum install epel-release
+  centos7.5:
+    builddeps:
+      - golang
+      - make
+    deps:
+      - fuse
+    commands:
+      pre:
+        - yum install epel-release
+  centos7.6:
+    builddeps:
+      - golang
+      - make
+    deps:
+      - fuse
+    commands:
+      pre:
+        - yum install epel-release
+  debian9:
+    builddeps:
+      - golang
+      - make
+    deps:
+      - fuse
+  opensuse42.3:
+    builddeps:
+      - go
+      - make
+    deps:
+      - fuse
+  ubuntu16.04:
+    builddeps:
+      - golang
+      - make
+    deps:
+      - fuse
+  ubuntu18.04:
+    builddeps:
+      - golang
+      - make
+    deps:
+      - fuse

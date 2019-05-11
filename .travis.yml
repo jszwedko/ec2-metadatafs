@@ -1,12 +1,32 @@
-sudo: true
+sudo: required
 language: go
 go:
-- 1.11
+- 1.12
+services:
+  - docker
 addons:
   apt:
     packages:
     - fuse
 script:
 - make
+before_deploy:
+- make dist
+- sudo apt-get update -qy
+- sudo apt-get install -qy python3 python3-pip
+- sudo python3 -m pip install --upgrade pip
+- sudo python3 -m pip install --upgrade packagecore setuptools
+- packagecore -o dist/ "${TRAVIS_TAG}"
+deploy:
+  provider: releases
+  api_key:
+    secure: Oe+gACbkU366oKbqDBwUGwAxpGyPB1sNRX3dkWCeINL1LsbF+ZkiID3a5SmR3RBSbX9CofA7mVRvOzBQkG+hsjgfccaGvkaiKuRhILP/0wVAnfo2oJ9du2wEbIup4cx3WXFpdr0f1T40V61jOv0dUJc6wUL31lbjyYDaSOVxmETMLZI0J6lWkplqVIgti/9Tp9lY+Xb55QMogA38c+7/nGL/ePRQBRPM3BRcVNY3+xkrtgRBe4ZhnekO3nUz0y/p6FcZVG2FJf/oqEiIHh3g1T5vfZQdBXXuVSsooodfDUTxHzDycWT8p+ipmrseHRslxuCte+xDwXv2xa9Rpt7t5R7XpGdzo+FtdGK3MDkvrnk8I92w2oUbl8qrwW/yLqlIfBQG4vLWVFAf9aoJXQLudH0XwhBIpceKL2ZJoWiNWYxkRy8fQn8qPPlPekvCY/+ceLvUAICfiZXNYmW31Y9IHVx8GCGSUQNxMYhsFOYJn5IePi+HC0gNp3opFPXAUtoKlgOnVnZP+SDSHYW9h/7gSOclGX6mGzBE8Mro+lXBlniB9sZ8HSK5OqhN+7OnWMlPDBriCxbfGbPxBG06P49L3/j5Oy3xku2Ut5p0HAFmXYyhDYw0xPHCPK2bX8XTaV7hHrSwu8IWZjhbEsoUK8Hh5MTpqkfVzZs+nJKRJ6QpSJA=
+  file_glob: true
+  file:
+  - dist/*
+  skip_cleanup: true
+  tags: true
+  on:
+    repo: jszwedko/ec2-metadatafs
 notifications:
   email: jesse.szwedko@gmail.com
