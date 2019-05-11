@@ -37,8 +37,6 @@ const (
 var (
 	// VersionString is the git tag this binary is associated with
 	VersionString string
-	// RevisionString is the git rev this binary is associated with
-	RevisionString string
 
 	facilityMap = map[string]syslog.Priority{
 		"KERN":     syslog.LOG_KERN,
@@ -315,7 +313,7 @@ given location.`
 	}
 
 	if options.Version {
-		fmt.Printf("%s (%s)\n", VersionString, RevisionString)
+		fmt.Printf("%s\n", VersionString)
 		os.Exit(0)
 	}
 
@@ -364,7 +362,7 @@ Valid syslog facilities:
   %s
 
 Version:
-  %s (%s)
+  %s
 
 Author:
   Jesse Szwedko
@@ -374,7 +372,7 @@ Project Homepage:
 
 Report bugs to:
   http://github.com/jszwedko/ec2-metadatafs/issues
-`, strings.Join(sortedValidFacilities(), ", "), VersionString, RevisionString)
+`, strings.Join(sortedValidFacilities(), ", "), VersionString)
 		os.Exit(0)
 	}
 
