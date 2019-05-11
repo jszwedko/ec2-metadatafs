@@ -1,5 +1,12 @@
 ## Unreleased
 
+## 1.0.0 (May 11, 2019)
+
+Primarily cut to start building OS packages, but this has been stable enough that a 1.0 release was cut.
+
+Changes:
+* Version number was simplified to remove the revision
+
 ## 0.4.0 (October 13, 2018)
 
 Changes:
