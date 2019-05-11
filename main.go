@@ -105,7 +105,7 @@ type Options struct {
 
 	Args struct {
 		Mountpoint string `positional-arg-name:"mountpoint"   description:"Directory to mount the filesystem at"`
-	} `positional-args:"yes" required:"yes"`
+	} `positional-args:"yes"`
 }
 
 type awsCredentials struct {
@@ -378,6 +378,11 @@ Report bugs to:
 
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if options.Args.Mountpoint == "" {
+		fmt.Println("error parsing command line options: the required argument `mountpoint` was not provided")
 		os.Exit(1)
 	}
 
