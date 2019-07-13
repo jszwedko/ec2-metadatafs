@@ -9,10 +9,10 @@ files exposing the EC2 metadata and, optionally, the tags on the instance in the
 
 Example:
 ```
-$ mkdir /tmp/aws
-$ ec2-metadatafs --tags /tmp/aws
-$ tree /tmp/aws
-/tmp/aws
+$ mkdir /var/run/aws
+$ ec2-metadatafs --tags /var/run/aws
+$ tree /var/run/aws
+/var/run/aws
 ├── dynamic
 │   └── instance-identity
 │       ├── document
@@ -73,12 +73,12 @@ $ tree /tmp/aws
 └── user-data
 
 16 directories, 42 files
-$ cat /tmp/aws/meta-data/instance-id
+$ cat /var/run/aws/meta-data/instance-id
 i-1234567890
-$ cat /tmp/aws/user-data
+$ cat /var/run/aws/user-data
 #! /bin/bash
 echo 'Hello world'
-$ cat /tmp/aws/tags/name
+$ cat /var/run/aws/tags/name
 My Instance Name
 ```
 
@@ -220,11 +220,11 @@ Report bugs to:
 
 You can have it automatically mount by adding the following to `/etc/fstab`:
 
-`ec2-metadatafs   /aws    fuse    _netdev,allow_other    0    0`
+`ec2-metadatafs   /var/run/aws    fuse    _netdev,allow_other    0    0`
 
 Or
 
-`ec2-metadatafs   /aws    fuse    _netdev,allow_other,tags    0    0`
+`ec2-metadatafs   /var/run/aws    fuse    _netdev,allow_other,tags    0    0`
 
 if you want to mount the tags as well (requires AWS API credentials -- described below).
 
