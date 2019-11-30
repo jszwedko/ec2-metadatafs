@@ -1,6 +1,7 @@
 package metadatafs
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -182,7 +183,7 @@ func TestMetadatFs_GetAttr_badResponse(t *testing.T) {
 	})
 
 	_, err := os.Stat(path.Join(dir, "/"))
-	if err.(*os.SyscallError).Err != syscall.EIO {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -192,7 +193,7 @@ func TestMetadatFs_GetAttr_noServer(t *testing.T) {
 	defer cleanup()
 
 	_, err := os.Stat(path.Join(dir, "/"))
-	if err.(*os.SyscallError).Err != syscall.EIO {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -278,7 +279,7 @@ func TestMetadatFs_OpenDir_notDir(t *testing.T) {
 	serveFile(mux, "/meta-data/instance-id", "i-123456", time.Now())
 
 	_, err := ioutil.ReadDir(path.Join(dir, "meta-data/instance-id"))
-	if err.(*os.SyscallError).Err != syscall.ENOTDIR {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.ENOTDIR {
 		t.Fatalf(`expected ENOTDIR, got %s`, err)
 	}
 }
@@ -310,7 +311,7 @@ func TestMetadatFs_OpenDir_badResponse(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadDir(path.Join(dir, "/"))
-	if err.(*os.SyscallError).Err != syscall.EIO {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -328,7 +329,7 @@ func TestMetadatFs_OpenDir_noServer(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadDir(path.Join(dir, "/"))
-	if err.(*os.SyscallError).Err != syscall.EIO {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -376,7 +377,7 @@ func TestMetadatFs_Open_badResponse(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadFile(path.Join(dir, "user-data"))
-	if err.(*os.SyscallError).Err != syscall.EIO {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -394,7 +395,7 @@ func TestMetadatFs_Open_noServer(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadFile(path.Join(dir, "user-data"))
-	if err.(*os.SyscallError).Err != syscall.EIO {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }

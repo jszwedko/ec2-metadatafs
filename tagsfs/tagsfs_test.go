@@ -1,6 +1,7 @@
 package tagsfs
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -144,7 +145,7 @@ func TestTagsFs_GetAttr_error(t *testing.T) {
 	})
 
 	_, err := os.Stat(path.Join(dir, "name"))
-	if err.(*os.PathError).Err != syscall.EIO {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -181,7 +182,7 @@ func TestTagsFs_OpenDir_notDir(t *testing.T) {
 	client.Handlers.Send.PushBack(serveTags(map[string]string{"name": "MyName"}))
 
 	_, err := ioutil.ReadDir(path.Join(dir, "name"))
-	if err.(*os.SyscallError).Err != syscall.ENOTDIR {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.ENOTDIR {
 		t.Fatalf(`expected ENOTDIR, got %s`, err)
 	}
 }
@@ -207,7 +208,7 @@ func TestTagsFs_OpenDir_error(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadDir(path.Join(dir, "/"))
-	if err.(*os.SyscallError).Err != syscall.EIO {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -268,7 +269,7 @@ func TestTagsFs_Open_error(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadFile(path.Join(dir, "name"))
-	if err.(*os.SyscallError).Err != syscall.EIO {
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
