@@ -207,7 +207,7 @@ func TestTagsFs_OpenDir_error(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadDir(path.Join(dir, "/"))
-	if err.(*os.PathError).Err != syscall.EIO {
+	if err.(*os.SyscallError).Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -268,7 +268,7 @@ func TestTagsFs_Open_error(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadFile(path.Join(dir, "name"))
-	if err.(*os.PathError).Err != syscall.EIO {
+	if err.(*os.SyscallError).Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }

@@ -182,7 +182,7 @@ func TestMetadatFs_GetAttr_badResponse(t *testing.T) {
 	})
 
 	_, err := os.Stat(path.Join(dir, "/"))
-	if err.(*os.PathError).Err != syscall.EIO {
+	if err.(*os.SyscallError).Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -192,7 +192,7 @@ func TestMetadatFs_GetAttr_noServer(t *testing.T) {
 	defer cleanup()
 
 	_, err := os.Stat(path.Join(dir, "/"))
-	if err.(*os.PathError).Err != syscall.EIO {
+	if err.(*os.SyscallError).Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -310,7 +310,7 @@ func TestMetadatFs_OpenDir_badResponse(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadDir(path.Join(dir, "/"))
-	if err.(*os.PathError).Err != syscall.EIO {
+	if err.(*os.SyscallError).Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -328,7 +328,7 @@ func TestMetadatFs_OpenDir_noServer(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadDir(path.Join(dir, "/"))
-	if err.(*os.PathError).Err != syscall.EIO {
+	if err.(*os.SyscallError).Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -376,7 +376,7 @@ func TestMetadatFs_Open_badResponse(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadFile(path.Join(dir, "user-data"))
-	if err.(*os.PathError).Err != syscall.EIO {
+	if err.(*os.SyscallError).Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
@@ -394,7 +394,7 @@ func TestMetadatFs_Open_noServer(t *testing.T) {
 	})
 
 	_, err := ioutil.ReadFile(path.Join(dir, "user-data"))
-	if err.(*os.PathError).Err != syscall.EIO {
+	if err.(*os.SyscallError).Err != syscall.EIO {
 		t.Fatalf(`expected EIO, got %s`, err)
 	}
 }
