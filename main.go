@@ -186,7 +186,7 @@ func (o *mountOptions) ExtractOption(s string) (ok bool, value string) {
 // mountTags mounts another endpoint onto the FUSE FS at tags/ exposing the EC2
 // instance tags as files
 func mountTags(nfs *pathfs.PathNodeFs, options *Options, logger *logging.Logger) {
-	svc := ec2metadata.New(session.New())
+	svc := ec2metadata.New(session.New(), &aws.Config{Endpoint: aws.String(options.Endpoint)})
 	instanceID, err := svc.GetMetadata("instance-id")
 	if err != nil {
 		logger.Fatalf("failed to query instance id to initialize tags mount: %v\n", err)
