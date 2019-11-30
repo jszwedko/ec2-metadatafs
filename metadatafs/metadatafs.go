@@ -25,6 +25,7 @@ type MetadataFs struct {
 	Logger logger.LeveledLogger
 }
 
+// MetadataClient is a client for accessing the AWS Instance Metadata Service
 type MetadataClient interface {
 	Head(path string) (resp *http.Response, err error)
 	Get(path string) (resp *http.Response, err error)

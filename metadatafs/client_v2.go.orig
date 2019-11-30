@@ -19,15 +19,14 @@ type IMDSv2Client struct {
 	Logger   logger.LeveledLogger
 
 	tokenMu sync.RWMutex
-	token   metadataToken
+	token   MetadataToken
 }
 
-type metadataToken struct {
+type MetadataToken struct {
 	Expires time.Time
 	Token   string
 }
 
-// NewIMDSv2Client returns a new IMDSv2Client
 func NewIMDSv2Client(endpoint string, tokenTTL time.Duration, l logger.LeveledLogger) *IMDSv2Client {
 	return &IMDSv2Client{
 		Client:   &http.Client{},
@@ -37,7 +36,6 @@ func NewIMDSv2Client(endpoint string, tokenTTL time.Duration, l logger.LeveledLo
 	}
 }
 
-// Get issues a GET request to the given path, refreshing the access token if needed
 func (c *IMDSv2Client) Get(path string) (*http.Response, error) {
 	err := c.ensureFreshToken()
 	if err != nil {
@@ -65,7 +63,6 @@ func (c *IMDSv2Client) Get(path string) (*http.Response, error) {
 	return resp, nil
 }
 
-// Head issues a HEAD request to the given path, refreshing the access token if needed
 func (c *IMDSv2Client) Head(path string) (*http.Response, error) {
 	err := c.ensureFreshToken()
 	if err != nil {
