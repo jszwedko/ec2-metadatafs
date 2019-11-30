@@ -256,12 +256,6 @@ See [Usage](#usage) section for more details on credential sources.
 
 ### Developing
 
-Requires Go 1.5 and
-[`GOVENDOREXPERIMENT=1`](https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo/edit)
-to properly include dependencies.
-
-Uses [`gvt`](https://github.com/FiloSottile/gvt) to manipulate dependencies.
-
 - Building: `make build`
 - Testing: `make test`
 - Building cross compiled binaries: `make dist` (will install [gox](https://github.com/mitchellh/gox) if needed)
