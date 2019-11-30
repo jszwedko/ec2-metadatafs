@@ -1,7 +1,7 @@
 .\" Manpage for ec2-metadatafs
 .\" Contact vivek@nixcraft.net.in to correct errors or typos.
 
-.TH ec2-metadatafs 1 "May 2019" "ec2-metadatafs version 0.4.0" "User Commands"
+.TH ec2-metadatafs 1 "May 2019" "ec2-metadatafs version 1.0.0" "User Commands"
 .SH NAME
 ec2\-metadatafs \- filesystem client to access AWS EC2 metadata and tags
 .SH SYNOPSIS
@@ -26,8 +26,23 @@ Run in foreground
 \fB\-V\fR, \fB\-\-version\fR
 Display version info
 .TP
-\fB\-e\fR, \fB\-\-endpoint=\fR
-EC2 metadata service HTTP endpoint (default: http://169.254.169.254/latest/)
+\fB\-\-endpoint=\fR
+Deprecated alias for --instance-metadata-service-endpoint
+.TP
+\fB\-e\fR, \fB\-\-instance-metadata-service-endpoint=\fR
+Instance Metadata Service HTTP endpoint (default: http://169.254.169.254/latest/)
+.TP
+\fB\-m\fR, \fB\-\-instance-metadata-service-version=\fR
+Instance Metadata Service version (default: v1)
+
+Choices: v1, v2
+
+See Instance Metadata Service (IMDS) Version section for additional details
+.TP
+\fB\-T\fR, \fB\-\-instance-metadata-token-ttl=\fR
+Instance Metadata Service token TTL (default 6h)
+
+Only valid for Instance Metadata Service version v2
 .TP
 \fB\-c\fR, \fB\-\-cachesec=\fR
 Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for indefinite. (default: 0)
@@ -69,7 +84,16 @@ Enable debug logging, same as \fB\-v\fR
 Enable fuse_debug logging (implies debug), same as \fB\-vv\fR
 .TP
 \fB\-o\fR endpoint=ENDPOINT
-EC2 metadata service HTTP endpoint, same as \fB\-\-endpoint=\fR
+Deprecated alias for -o instance_metadata_service_endpoint=
+.TP
+\fB\-o\fR instance_metadata_service_endpoint=ENDPOINT
+Instance metadata service HTTP endpoint, same as --instance-metadata-service-endpoint=
+.TP
+\fB\-o\fR instance_metadata_service_version=VERSION
+Instance Metadata Service version, v1 or v2, same as --instance-metadata-service-version=
+.TP
+\fB\-o\fR instance_metadata_service_token_ttl=TTL
+Instance Metadata Service token TTL, only valid with service_version=v2, same as --instance-metadata-service-token-ttl=
 .TP
 \fB\-o\fR tags
 Mount the instance tags at <mount point>/tags, same as \fB\-\-tags\fR
@@ -111,6 +135,20 @@ IAM role associated with the instance
 .TP
 Note that the AWS session token is only needed for temporary credentials from AWS security token service.
 .PP
+.SS Instance Metadata Service (IMDS) Version:
+.TP
+AWS has two modes for interacting with the metadata API:
+.RS
+.TP
+v1: request/response method (traditional)
+.TP
+v2: session-oriented method (more secure)
+.TP
+.RE
+.TP
+If you are unsure, choose v2. The default is currently v1 for backwards compatibliity.
+.TP
+See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html for additional details.
 .SS Caching:
 .TP
 Caching of the following is supported and controlled via the cachesec parameter:
@@ -129,7 +167,7 @@ When accessed this metadata will be cached for the number of seconds specified b
 KERN, USER, MAIL, DAEMON, AUTH, SYSLOG, LPR, NEWS, UUCP, CRON, AUTHPRIV, FTP, LOCAL0, LOCAL1, LOCAL2, LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7
 .SS "Version:"
 .IP
-0.4.0\-1\-gb084090\-dirty ('b0840905971be574bca1ba074e4b0b24a38df4b9')
+1.0.0
 .SS "Author:"
 .IP
 Jesse Szwedko
