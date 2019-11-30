@@ -116,10 +116,13 @@ type awsCredentials struct {
 
 func (a *awsCredentials) credentialChain() *credentials.Credentials {
 	return credentials.NewChainCredentials([]credentials.Provider{
-		&credentials.StaticProvider{Value: credentials.Value{
-			AccessKeyID:     a.AWSAccessKeyID,
-			SecretAccessKey: a.AWSAccessKeyID,
-			SessionToken:    a.AWSSessionToken}},
+		&credentials.StaticProvider{
+			Value: credentials.Value{
+				AccessKeyID:     a.AWSAccessKeyID,
+				SecretAccessKey: a.AWSSecretAccessKey,
+				SessionToken:    a.AWSSessionToken,
+			},
+		},
 		&credentials.EnvProvider{},
 		&credentials.SharedCredentialsProvider{},
 		&ec2rolecreds.EC2RoleProvider{Client: ec2metadata.New(session.New())},
