@@ -339,20 +339,20 @@ given location.`
 		parser.WriteHelp(os.Stdout)
 		fmt.Printf(`
 Mount options:
-  -o debug																				Enable debug logging, same as -v
-  -o fuse_debug																		Enable fuse_debug logging (implies debug), same as -vv
-  -o endpoint=ENDPOINT														Deprecated alias for -o instance_metadata_service_endpoint=
+  -o debug                                        Enable debug logging, same as -v
+  -o fuse_debug                                   Enable fuse_debug logging (implies debug), same as -vv
+  -o endpoint=ENDPOINT                            Deprecated alias for -o instance_metadata_service_endpoint=
   -o instance_metadata_service_endpoint=ENDPOINT  Instance metadata service HTTP endpoint, same as --instance-metadata-service-endpoint=
   -o instance_metadata_service_version=VERSION    Instance Metadata Service version, v1 or v2, same as --instance-metadata-service-version=
   -o instance_metadata_service_token_ttl=TTL      Instance Metadata Service token TTL, only valid with service_version=v2, same as --instance-metadata-service-token-ttl=
-  -o tags																					Mount the instance tags at <mount point>/tags, same as --tags
-  -o aws_access_key_id=ID													AWS API access key (see below), same as --aws-access-key-id=
-  -o aws_secret_access_key=KEY										AWS API secret key (see below), same as --aws-secret-access-key=
-  -o aws_session_token=KEY												AWS API session token (see below), same as --aws-session-token=
-  -o cachesec=SEC																	Number of seconds to cache files attributes and directory listings, same as --cachesec
-  -o syslog_facility=															Syslog facility to send messages upon when daemonized (see below)
-  -o no_syslog																		Disable logging to syslog when daemonized
-  -o FUSEOPTION=OPTIONVALUE												FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
+  -o tags                                          Mount the instance tags at <mount point>/tags, same as --tags
+  -o aws_access_key_id=ID                         AWS API access key (see below), same as --aws-access-key-id=
+  -o aws_secret_access_key=KEY                    AWS API secret key (see below), same as --aws-secret-access-key=
+  -o aws_session_token=KEY                        AWS API session token (see below), same as --aws-session-token=
+  -o cachesec=SEC                                 Number of seconds to cache files attributes and directory listings, same as --cachesec
+  -o syslog_facility=                             Syslog facility to send messages upon when daemonized (see below)
+  -o no_syslog                                    Disable logging to syslog when daemonized
+  -o FUSEOPTION=OPTIONVALUE                       FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 
 AWS credential chain:
   AWS credentials only required when mounting the instance tags (--tags or -o tags).
