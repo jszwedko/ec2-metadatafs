@@ -39,7 +39,7 @@ func NewIMDSv2Client(endpoint string, tokenTTL time.Duration, l logger.LeveledLo
 
 // Get issues a GET request to the given path, refreshing the access token if needed
 func (c *IMDSv2Client) Get(path string) (*http.Response, error) {
-	err := c.ensureFreshToken()
+	token, err := c.getToken()
 	if err != nil {
 		return nil, fmt.Errorf("could not refresh metadata token: %w", err)
 	}
@@ -51,11 +51,7 @@ func (c *IMDSv2Client) Get(path string) (*http.Response, error) {
 		return nil, fmt.Errorf("could not build GET request: %w", err)
 	}
 
-	r.Header.Add("X-aws-ec2-metadata-token", func() string {
-		c.tokenMu.RLock()
-		defer c.tokenMu.RUnlock()
-		return c.token.Token
-	}())
+	r.Header.Add("X-aws-ec2-metadata-token", token)
 
 	resp, err := c.Client.Do(r)
 	if err != nil {
@@ -67,7 +63,7 @@ func (c *IMDSv2Client) Get(path string) (*http.Response, error) {
 
 // Head issues a HEAD request to the given path, refreshing the access token if needed
 func (c *IMDSv2Client) Head(path string) (*http.Response, error) {
-	err := c.ensureFreshToken()
+	token, err := c.getToken()
 	if err != nil {
 		return nil, fmt.Errorf("could not refresh metadata token: %w", err)
 	}
@@ -77,11 +73,7 @@ func (c *IMDSv2Client) Head(path string) (*http.Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not build HEAD request: %w", err)
 	}
-	r.Header.Add("X-aws-ec2-metadata-token", func() string {
-		c.tokenMu.RLock()
-		defer c.tokenMu.RUnlock()
-		return c.token.Token
-	}())
+	r.Header.Add("X-aws-ec2-metadata-token", token)
 
 	resp, err := c.Client.Do(r)
 	if err != nil {
@@ -91,18 +83,16 @@ func (c *IMDSv2Client) Head(path string) (*http.Response, error) {
 	return resp, nil
 }
 
-// set -x TOKEN (curl -X PUT "http://localhost:8080/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-func (c *IMDSv2Client) ensureFreshToken() (err error) {
-	needsRefresh := func() bool {
-		c.tokenMu.RLock()
-		defer c.tokenMu.RUnlock()
-		// if the token would expire in the next second
-		return c.token.Token == "" || c.token.Expires.Truncate(time.Second).Before(time.Now().Truncate(time.Second).Add(time.Second))
-	}
+// return the token, refreshing if needed
+func (c *IMDSv2Client) getToken() (string, error) {
+	const prefetchWindow = 10 * time.Second
 
-	if !needsRefresh() {
-		return nil
+	c.tokenMu.RLock()
+	if c.token.Token != "" && c.token.Expires.After(time.Now()) {
+		c.tokenMu.RUnlock()
+		return c.token.Token, nil
 	}
+	c.tokenMu.RUnlock()
 
 	c.tokenMu.Lock()
 	defer c.tokenMu.Unlock()
@@ -110,27 +100,26 @@ func (c *IMDSv2Client) ensureFreshToken() (err error) {
 	url := joinURL(c.Endpoint, "/api/token")
 	r, err := http.NewRequest(http.MethodPut, url, nil)
 	if err != nil {
-		return fmt.Errorf("error building refresh metadata token request: %w", err)
+		return "", fmt.Errorf("error building refresh metadata token request: %w", err)
 	}
 
 	r.Header.Add("X-aws-ec2-metadata-token-ttl-seconds", strconv.FormatInt(int64(c.TokenTTL/time.Second), 10))
 
-	// set before request to avoid unexpected expiration
-	expires := time.Now().Add(c.TokenTTL)
+	expires := time.Now().Add(c.TokenTTL - prefetchWindow)
 	c.Logger.Debugf("issuing HTTP PUT to AWS metadata API for path: %s", url)
 	resp, err := c.Client.Do(r)
 	if err != nil {
-		return fmt.Errorf("error refreshing metadata token: %w", err)
+		return "", fmt.Errorf("error refreshing metadata token: %w", err)
 	}
 	defer resp.Body.Close()
 
 	token, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("error reading metadata token response: %w", err)
+		return "", fmt.Errorf("error reading metadata token response: %w", err)
 	}
 
 	c.token.Token = string(token)
 	c.token.Expires = expires
 
-	return nil
+	return c.token.Token, nil
 }
