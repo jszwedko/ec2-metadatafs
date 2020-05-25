@@ -14,6 +14,7 @@ import (
 // Level is the log level
 type Level uint8
 
+// Log levels
 const (
 	FatalLevel Level = iota
 	ErrorLevel
@@ -125,26 +126,26 @@ func (l *Logger) Logf(level Level, m string, args ...interface{}) {
 // given level
 //
 // Caller is expected to close the writer
-func (logger *Logger) Writer(level Level) io.WriteCloser {
+func (l *Logger) Writer(level Level) io.WriteCloser {
 	reader, writer := io.Pipe()
 
 	var printFunc func(m string, args ...interface{})
 	switch level {
 	case DebugLevel:
-		printFunc = logger.Debugf
+		printFunc = l.Debugf
 	case InfoLevel:
-		printFunc = logger.Infof
+		printFunc = l.Infof
 	case WarningLevel:
-		printFunc = logger.Warningf
+		printFunc = l.Warningf
 	case ErrorLevel:
-		printFunc = logger.Errorf
+		printFunc = l.Errorf
 	case FatalLevel:
-		printFunc = logger.Fatalf
+		printFunc = l.Fatalf
 	default:
-		printFunc = logger.Infof
+		printFunc = l.Infof
 	}
 
-	go logger.writerScanner(reader, printFunc)
+	go l.writerScanner(reader, printFunc)
 
 	return writer
 }
@@ -154,13 +155,13 @@ func (l *Logger) Close() error {
 	return l.DisableSyslog()
 }
 
-func (logger *Logger) writerScanner(reader *io.PipeReader, printFunc func(m string, args ...interface{})) {
+func (l *Logger) writerScanner(reader *io.PipeReader, printFunc func(m string, args ...interface{})) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		printFunc(scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
-		logger.Errorf("Error while reading from Writer: %s", err)
+		l.Errorf("Error while reading from Writer: %s", err)
 	}
 	reader.Close()
 }

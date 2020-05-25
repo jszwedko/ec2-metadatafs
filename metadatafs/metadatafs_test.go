@@ -29,7 +29,7 @@ func setup(t *testing.T) (mux *http.ServeMux, workdir string, cleanup func()) {
 		t.Fatalf("creating tempdir failed: %v", err)
 	}
 
-	fs := New(server.URL+"/", logging.NewLogger())
+	fs := New(NewIMDSv1Client(server.URL+"/", logging.NewLogger()), logging.NewLogger())
 	nfs := pathfs.NewPathNodeFs(fs, nil)
 	state, _, err := nodefs.MountRoot(tmpDir, nfs.Root(), nodefs.NewOptions())
 	if err != nil {
@@ -51,7 +51,7 @@ func setupWithoutServer(t *testing.T) (workdir string, cleanup func()) {
 		t.Fatalf("creating tempdir failed: %v", err)
 	}
 
-	fs := New("", logging.NewLogger())
+	fs := New(NewIMDSv1Client("", logging.NewLogger()), logging.NewLogger())
 	nfs := pathfs.NewPathNodeFs(fs, nil)
 	state, _, err := nodefs.MountRoot(tmpDir, nfs.Root(), nodefs.NewOptions())
 	if err != nil {

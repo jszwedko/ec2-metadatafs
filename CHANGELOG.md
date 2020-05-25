@@ -1,5 +1,8 @@
 ## Unreleased
 
+Changes:
+* Support for the more secure version 2 of the metadata service API
+
 ## 1.0.0 (May 11, 2019)
 
 Primarily cut to start building OS packages, but this has been stable enough that a 1.0 release was cut.

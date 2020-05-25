@@ -90,10 +90,15 @@ func (f FacilityNamesSlice) Swap(i, j int) {
 // Options holds the command line arguments and flags
 // Intended for use with go-flags
 type Options struct {
-	Verbose      []bool       `short:"v" long:"verbose"     description:"Print verbose logs, can be specified multiple times (up to 2)"`
-	Foreground   bool         `short:"f" long:"foreground"  description:"Run in foreground"`
-	Version      bool         `short:"V" long:"version"     description:"Display version info"`
-	Endpoint     string       `short:"e" long:"endpoint"    description:"EC2 metadata service HTTP endpoint" default:"http://169.254.169.254/latest/"`
+	Verbose       []bool `short:"v" long:"verbose"     description:"Print verbose logs, can be specified multiple times (up to 2)"`
+	Foreground    bool   `short:"f" long:"foreground"  description:"Run in foreground"`
+	Version       bool   `short:"V" long:"version"     description:"Display version info"`
+	EndpointAlias string `          long:"endpoint"    description:"Deprecated alias for --instance-metadata-service-endpoint"`
+
+	MetadataServiceEndpoint string        `short:"e" long:"instance-metadata-service-endpoint"  description:"Instance Metadata Service HTTP endpoint" default:"http://169.254.169.254/latest/"`
+	MetadataServiceVersion  string        `short:"m" long:"instance-metadata-service-version"   description:"Instance Metadata Service version" default:"v1" choice:"v1" choice:"v2"`
+	MetadataServiceTokenTTL time.Duration `short:"T" long:"instance-metadata-service-token-ttl" description:"Instance Metadata Service token TTL (only valid for Instance Metadata Service version v2)" default:"6h"`
+
 	CacheSec     int          `short:"c" long:"cachesec"    description:"Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for indefinite." default:"0"`
 	Tags         bool         `short:"t" long:"tags"        description:"Mount EC2 instance tags at <mount point>/tags"`
 	MountOptions mountOptions `short:"o" long:"options"     description:"Mount options, see below for description"`
@@ -186,7 +191,7 @@ func (o *mountOptions) ExtractOption(s string) (ok bool, value string) {
 // mountTags mounts another endpoint onto the FUSE FS at tags/ exposing the EC2
 // instance tags as files
 func mountTags(nfs *pathfs.PathNodeFs, options *Options, logger *logging.Logger) {
-	svc := ec2metadata.New(session.New(), &aws.Config{Endpoint: aws.String(options.Endpoint)})
+	svc := ec2metadata.New(session.New(), &aws.Config{Endpoint: aws.String(options.MetadataServiceEndpoint)})
 	instanceID, err := svc.GetMetadata("instance-id")
 	if err != nil {
 		logger.Fatalf("failed to query instance id to initialize tags mount: %v\n", err)
@@ -212,8 +217,18 @@ func mountTags(nfs *pathfs.PathNodeFs, options *Options, logger *logging.Logger)
 func prepareServer(options *Options, logger *logging.Logger) *fuse.Server {
 	var fs pathfs.FileSystem
 
-	logger.Debugf("mounting at %s directed at %s with options: %+v", options.Args.Mountpoint, options.Endpoint, options.MountOptions.opts)
-	fs = metadatafs.New(options.Endpoint, logger)
+	logger.Debugf("mounting at %s directed at %s with options: %+v", options.Args.Mountpoint, options.MetadataServiceEndpoint, options.MountOptions.opts)
+	var client metadatafs.MetadataClient
+	switch options.MetadataServiceVersion {
+	case "v1":
+		client = metadatafs.NewIMDSv1Client(options.MetadataServiceEndpoint, logger)
+	case "v2":
+		client = metadatafs.NewIMDSv2Client(options.MetadataServiceEndpoint, options.MetadataServiceTokenTTL, logger)
+	default:
+		fmt.Printf("unknown --instance-medatata-service-version %s", options.MetadataServiceVersion)
+		os.Exit(1)
+	}
+	fs = metadatafs.New(client, logger)
 	switch {
 	case options.CacheSec == 0:
 		logger.Debugf("caching disabled")
@@ -324,17 +339,20 @@ given location.`
 		parser.WriteHelp(os.Stdout)
 		fmt.Printf(`
 Mount options:
-  -o debug                     Enable debug logging, same as -v
-  -o fuse_debug                Enable fuse_debug logging (implies debug), same as -vv
-  -o endpoint=ENDPOINT         EC2 metadata service HTTP endpoint, same as --endpoint=
-  -o tags                      Mount the instance tags at <mount point>/tags, same as --tags
-  -o aws_access_key_id=ID      AWS API access key (see below), same as --aws-access-key-id=
-  -o aws_secret_access_key=KEY AWS API secret key (see below), same as --aws-secret-access-key=
-  -o aws_session_token=KEY     AWS API session token (see below), same as --aws-session-token=
-  -o cachesec=SEC              Number of seconds to cache files attributes and directory listings, same as --cachesec
-  -o syslog_facility=					 Syslog facility to send messages upon when daemonized (see below)
-  -o no_syslog                 Disable logging to syslog when daemonized
-  -o FUSEOPTION=OPTIONVALUE    FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
+  -o debug                                        Enable debug logging, same as -v
+  -o fuse_debug                                   Enable fuse_debug logging (implies debug), same as -vv
+  -o endpoint=ENDPOINT                            Deprecated alias for -o instance_metadata_service_endpoint=
+  -o instance_metadata_service_endpoint=ENDPOINT  Instance metadata service HTTP endpoint, same as --instance-metadata-service-endpoint=
+  -o instance_metadata_service_version=VERSION    Instance Metadata Service version, v1 or v2, same as --instance-metadata-service-version=
+  -o instance_metadata_service_token_ttl=TTL      Instance Metadata Service token TTL, only valid with service_version=v2, same as --instance-metadata-service-token-ttl=
+  -o tags                                          Mount the instance tags at <mount point>/tags, same as --tags
+  -o aws_access_key_id=ID                         AWS API access key (see below), same as --aws-access-key-id=
+  -o aws_secret_access_key=KEY                    AWS API secret key (see below), same as --aws-secret-access-key=
+  -o aws_session_token=KEY                        AWS API session token (see below), same as --aws-session-token=
+  -o cachesec=SEC                                 Number of seconds to cache files attributes and directory listings, same as --cachesec
+  -o syslog_facility=                             Syslog facility to send messages upon when daemonized (see below)
+  -o no_syslog                                    Disable logging to syslog when daemonized
+  -o FUSEOPTION=OPTIONVALUE                       FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 
 AWS credential chain:
   AWS credentials only required when mounting the instance tags (--tags or -o tags).
@@ -347,6 +365,17 @@ AWS credential chain:
   - IAM role associated with the instance
 
   Note that the AWS session token is only needed for temporary credentials from AWS security token service.
+
+Instance Metadata Service (IMDS) Version:
+
+AWS has two modes for interacting with the metadata API:
+
+* v1: request/response method (traditional)
+* v2: session-oriented method (more secure)
+
+If you are unsure, choose v2. The default is currently v1 for backwards compatibliity.
+
+See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html for additional details.
 
 Caching:
 
@@ -389,8 +418,18 @@ Report bugs to:
 		os.Exit(1)
 	}
 
+	// fallback to alias if set and the main option is not
+	if parser.FindOptionByLongName("instance-metadata-service-endpoint").IsSetDefault() && parser.FindOptionByLongName("endpoint").IsSet() {
+		options.MetadataServiceEndpoint = options.EndpointAlias
+	}
+
 	if ok, value := options.MountOptions.ExtractOption("endpoint"); ok {
-		options.Endpoint = value
+		options.MetadataServiceEndpoint = value
+	}
+
+	// overrides -o endpoint=
+	if ok, value := options.MountOptions.ExtractOption("instance_metadata_service_endpoint"); ok {
+		options.MetadataServiceEndpoint = value
 	}
 
 	if ok, value := options.MountOptions.ExtractOption("aws_access_key_id"); ok {

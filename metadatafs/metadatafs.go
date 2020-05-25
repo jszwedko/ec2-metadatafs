@@ -1,6 +1,7 @@
 package metadatafs
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path"
@@ -19,18 +20,23 @@ import (
 type MetadataFs struct {
 	pathfs.FileSystem
 
-	Client   *http.Client
-	Endpoint string
-	Logger   logger.LeveledLogger
+	Client MetadataClient
+
+	Logger logger.LeveledLogger
+}
+
+// MetadataClient is a client for accessing the AWS Instance Metadata Service
+type MetadataClient interface {
+	Head(path string) (resp *http.Response, err error)
+	Get(path string) (resp *http.Response, err error)
 }
 
 // New initializes a new MetadataFs that uses the given endpoint as the
 // target of metadata requests
-func New(endpoint string, l logger.LeveledLogger) *MetadataFs {
+func New(client MetadataClient, l logger.LeveledLogger) *MetadataFs {
 	return &MetadataFs{
 		FileSystem: pathfs.NewReadonlyFileSystem(pathfs.NewDefaultFileSystem()),
-		Client:     &http.Client{},
-		Endpoint:   endpoint,
+		Client:     client,
 		Logger:     l,
 	}
 }
@@ -45,16 +51,12 @@ func (fs *MetadataFs) StatFs(name string) *fuse.StatfsOut {
 
 // GetAttr returns an fuse.Attr representing a read-only file or directory
 func (fs *MetadataFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
-	url := fs.Endpoint + name
-
-	fs.Logger.Debugf("issuing HTTP HEAD to AWS metadata API for path: %s", url)
-	resp, err := fs.Client.Head(url)
+	resp, err := fs.Client.Head(name)
 	if err != nil {
 		fs.Logger.Errorf("failed to query AWS metadata API: %s", err)
 		return nil, fuse.EIO
 	}
 
-	fs.Logger.Debugf("got %d from AWS metadata API for path: %s", resp.StatusCode, url)
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		fs.Logger.Debugf("returning ENOENT for %s", name)
@@ -74,16 +76,12 @@ func (fs *MetadataFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 
 // OpenDir returns the list of paths under the given path
 func (fs *MetadataFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEntry, code fuse.Status) {
-	url := fs.Endpoint + name
-
-	fs.Logger.Debugf("issuing HTTP GET to AWS metadata API for path: %s", url)
-	resp, err := fs.Client.Get(url)
+	resp, err := fs.Client.Get(name)
 	if err != nil {
 		fs.Logger.Errorf("failed to query AWS metadata API: %s", err)
 		return nil, fuse.EIO
 	}
 
-	fs.Logger.Debugf("got %d from AWS metadata API for path: %s", resp.StatusCode, url)
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		fs.Logger.Debugf("returning file not found for %s", name)
@@ -140,16 +138,12 @@ func (fs *MetadataFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirE
 
 // Open returns a datafile representing the HTTP response body
 func (fs *MetadataFs) Open(name string, flags uint32, context *fuse.Context) (file nodefs.File, code fuse.Status) {
-	url := fs.Endpoint + name
-
-	fs.Logger.Debugf("issuing HTTP GET to AWS metadata API for path: '%s'", url)
-	resp, err := fs.Client.Get(url)
+	resp, err := fs.Client.Get(name)
 	if err != nil {
 		fs.Logger.Errorf("failed to query AWS metadata API: %s", err)
 		return nil, fuse.EIO
 	}
 
-	fs.Logger.Debugf("got %d from AWS metadata API for path %s", resp.StatusCode, url)
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		return nil, fuse.ENOENT
@@ -215,4 +209,9 @@ dynamic/instance-identity)$`, "\n", "", -1))
 
 func isDir(filename string) bool {
 	return directoryRexep.MatchString(filename)
+}
+
+func joinURL(base string, paths ...string) string {
+	p := path.Join(paths...)
+	return fmt.Sprintf("%s/%s", strings.TrimRight(base, "/"), strings.TrimLeft(p, "/"))
 }
