@@ -432,6 +432,18 @@ Report bugs to:
 		options.MetadataServiceEndpoint = value
 	}
 
+	if ok, value := options.MountOptions.ExtractOption("instance_metadata_service_version"); ok {
+		options.MetadataServiceVersion = value
+	}
+
+	if ok, value := options.MountOptions.ExtractOption("instance_metadata_service_token_ttl"); ok {
+		options.MetadataServiceTokenTTL, err = time.ParseDuration(value)
+		if err != nil {
+			fmt.Printf("error parsing instance_metadata_service_token_ttl as duration: %s\n", err)
+			os.Exit(1)
+		}
+	}
+
 	if ok, value := options.MountOptions.ExtractOption("aws_access_key_id"); ok {
 		options.AWSCredentials.AWSAccessKeyID = value
 	}
