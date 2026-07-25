@@ -1,7 +1,5 @@
 ## ec2-metadatafs: `cat` your AWS EC2 metadata
 
-[![Build Status](https://travis-ci.org/jszwedko/ec2-metadatafs.svg?branch=master)](https://travis-ci.org/jszwedko/ec2-metadatafs) [![Go Report Card](https://goreportcard.com/badge/github.com/jszwedko/ec2-metadatafs)](https://goreportcard.com/report/github.com/jszwedko/ec2-metadatafs)
-
 `ec2-metadatafs` exposes [AWS EC2
 metadata](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html) as a filesystem for easy `ls`,
 `cat`, and `grep`ing. It relies on [FUSE](https://github.com/libfuse/libfuse) to mount a user-space filesystem with
