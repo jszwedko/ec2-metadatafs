@@ -1,5 +1,10 @@
 ## Unreleased
 
+## 2.0.1 (July 26, 2026)
+
+Changes:
+- Package for arm64 too
+
 ## 2.0.0 (July 26, 2026)
 
 Breaking:
