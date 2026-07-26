@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Install fuse
+        run: sudo apt-get update -qy && sudo apt-get install -qy fuse
+
+      - name: Configure GOPATH
+        run: echo "GOPATH=$(go env GOPATH)" >> "$GITHUB_ENV"
+
+      - name: Build and test
+        run: make
