@@ -1,0 +1,47 @@
+version: 2
+
+project_name: ec2-metadatafs
+
+builds:
+  - main: .
+    binary: ec2-metadatafs
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - "386"
+    ldflags:
+      - -X main.VersionString={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+    files:
+      - ec2-metadatafs.1
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+nfpms:
+  - maintainer: Jesse Szwedko <jesse@szwedko.me>
+    homepage: https://github.com/jszwedko/ec2-metadatafs
+    description: Filesystem client to access AWS EC2 metadata and tags.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk
+      - archlinux
+    dependencies:
+      - fuse
+    contents:
+      - src: ec2-metadatafs.1
+        dst: /usr/share/man/man1/ec2-metadatafs.1
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  disable: true
+
+release:
+  mode: append
