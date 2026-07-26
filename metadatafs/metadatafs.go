@@ -61,6 +61,9 @@ func (fs *MetadataFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 	case http.StatusNotFound:
 		fs.Logger.Debugf("returning ENOENT for %s", name)
 		return nil, fuse.ENOENT
+	case http.StatusUnauthorized:
+		fs.Logger.Errorf("got 401 from AWS metadata API for %s; instance may only support IMDSv2", name)
+		return nil, fuse.EACCES
 	case http.StatusOK:
 		if isDir(name) {
 			fs.Logger.Debugf("determined '%s' is a directory", name)
@@ -86,6 +89,9 @@ func (fs *MetadataFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirE
 	case http.StatusNotFound:
 		fs.Logger.Debugf("returning file not found for %s", name)
 		return nil, fuse.ENOENT
+	case http.StatusUnauthorized:
+		fs.Logger.Errorf("got 401 from AWS metadata API for %s; instance may only support IMDSv2", name)
+		return nil, fuse.EACCES
 	case http.StatusOK:
 		if !isDir(name) {
 			fs.Logger.Debugf("returning ENOTDIR for %s", name)
@@ -147,6 +153,9 @@ func (fs *MetadataFs) Open(name string, flags uint32, context *fuse.Context) (fi
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		return nil, fuse.ENOENT
+	case http.StatusUnauthorized:
+		fs.Logger.Errorf("got 401 from AWS metadata API for %s; instance may only support IMDSv2", name)
+		return nil, fuse.EACCES
 	case http.StatusOK:
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {

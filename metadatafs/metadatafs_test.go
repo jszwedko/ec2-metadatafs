@@ -188,6 +188,20 @@ func TestMetadatFs_GetAttr_badResponse(t *testing.T) {
 	}
 }
 
+func TestMetadatFs_GetAttr_unauthorized(t *testing.T) {
+	mux, dir, cleanup := setup(t)
+	defer cleanup()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+
+	_, err := os.Stat(path.Join(dir, "/"))
+	if syscallError := (&os.SyscallError{}); errors.As(err, &syscallError) && syscallError.Err != syscall.EACCES {
+		t.Fatalf(`expected EACCES, got %s`, err)
+	}
+}
+
 func TestMetadatFs_GetAttr_noServer(t *testing.T) {
 	dir, cleanup := setupWithoutServer(t)
 	defer cleanup()
