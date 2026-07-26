@@ -101,7 +101,7 @@ Feedback and feature requests are welcome!
 
 ### Release packages
 
-Packages are built for Arch Linux, CentOS, Debian, Fedora and Ubuntu. See
+Packages are built as `.deb`, `.rpm`, `.apk`, and Arch Linux packages. See
 [releases](https://github.com/jszwedko/ec2-metadatafs/releases) to install one of these.
 
 ### Binary installation
@@ -256,4 +256,4 @@ See [Usage](#usage) section for more details on credential sources.
 
 - Building: `make build`
 - Testing: `make test`
-- Building cross compiled binaries: `make dist` (will install [gox](https://github.com/mitchellh/gox) if needed)
+- Building release artifacts (cross compiled binaries and packages): `goreleaser release --snapshot --clean` (requires [goreleaser](https://goreleaser.com))

@@ -17,10 +17,8 @@ GOBIN := $(shell echo "$${GOPATH%%:*}/bin")
 endif
 
 LINT := $(GOBIN)/golint
-GOX := $(GOBIN)/gox
 
 $(LINT): ; @go get golang.org/x/lint/golint
-$(GOX): ; @go get -v github.com/mitchellh/gox
 
 .PHONY: build
 build:
@@ -32,14 +30,6 @@ install: build
 	$(INSTALL) -m 0755 $(BIN) $(DESTDIR)$(PREFIX)/bin
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(MANPREFIX)/man1
 	$(INSTALL) -m 0644 $(BIN).1 $(DESTDIR)$(MANPREFIX)/man1
-
-.PHONY: dist
-dist: $(GOX)
-	@$(GOX) -ldflags "-X main.VersionString=$(VERSION) -X main.RevisionString=$(REVISION)" -os 'linux' -arch '386 amd64'  -output 'dist/{{.OS}}_{{.Arch}}' .
-
-.PHONY: release
-release: dist
-	hub release create $$(for f in dist/* ; do echo -n "-a $$f " ; done) $(tag)
 
 .PHONY: vet
 vet:
