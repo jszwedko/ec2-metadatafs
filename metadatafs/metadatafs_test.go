@@ -289,9 +289,7 @@ func TestMetadatFs_OpenDir_noFile(t *testing.T) {
 	defer cleanup()
 
 	mux.HandleFunc("/meta-data", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "HEAD" {
-			w.WriteHeader(404)
-		}
+		w.WriteHeader(404)
 	})
 
 	_, err := ioutil.ReadDir(path.Join(dir, "meta-data"))
@@ -355,9 +353,7 @@ func TestMetadatFs_Open_noFile(t *testing.T) {
 	defer cleanup()
 
 	mux.HandleFunc("/user-data", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "HEAD" {
-			w.WriteHeader(404)
-		}
+		w.WriteHeader(404)
 	})
 
 	_, err := ioutil.ReadFile(path.Join(dir, "user-data"))
