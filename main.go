@@ -18,11 +18,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/fuse/nodefs"
-	"github.com/hanwen/go-fuse/fuse/pathfs"
-	"github.com/hanwen/go-fuse/unionfs"
+	"github.com/hanwen/go-fuse/v2/fuse"
+	"github.com/hanwen/go-fuse/v2/fuse/nodefs"
+	"github.com/hanwen/go-fuse/v2/fuse/pathfs"
 	"github.com/jessevdk/go-flags"
+	"github.com/jszwedko/ec2-metadatafs/internal/cachingfs"
 	"github.com/jszwedko/ec2-metadatafs/internal/logging"
 	"github.com/jszwedko/ec2-metadatafs/metadatafs"
 	"github.com/jszwedko/ec2-metadatafs/tagsfs"
@@ -234,10 +234,10 @@ func prepareServer(options *Options, logger *logging.Logger) *fuse.Server {
 		logger.Debugf("caching disabled")
 	case options.CacheSec <= 0:
 		logger.Debugf("indefinite caching enabled")
-		fs = unionfs.NewCachingFileSystem(fs, time.Duration(-1)*time.Second)
+		fs = cachingfs.New(fs, time.Duration(-1)*time.Second)
 	default:
 		logger.Debugf("caching enabled (%d seconds)", options.CacheSec)
-		fs = unionfs.NewCachingFileSystem(fs, time.Duration(options.CacheSec)*time.Second)
+		fs = cachingfs.New(fs, time.Duration(options.CacheSec)*time.Second)
 	}
 
 	nfs := pathfs.NewPathNodeFs(fs, nil)
