@@ -1,7 +1,13 @@
 ## Unreleased
 
+## 2.0.0 (July 26, 2026)
+
+Breaking:
+* Defaults to IMDSv2 by default now. Set instance_metadata_service_version to v1 if you want to continue using IMDSv1.
+
 Changes:
 * Support for the more secure version 2 of the metadata service API
+* Add mount option parsing for IMDSv2 support (instance_metadata_service_version and instance_metadata_service_token_ttl)
 
 ## 1.0.0 (May 11, 2019)
 
