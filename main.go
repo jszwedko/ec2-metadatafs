@@ -96,7 +96,7 @@ type Options struct {
 	EndpointAlias string `          long:"endpoint"    description:"Deprecated alias for --instance-metadata-service-endpoint"`
 
 	MetadataServiceEndpoint string        `short:"e" long:"instance-metadata-service-endpoint"  description:"Instance Metadata Service HTTP endpoint" default:"http://169.254.169.254/latest/"`
-	MetadataServiceVersion  string        `short:"m" long:"instance-metadata-service-version"   description:"Instance Metadata Service version" default:"v1" choice:"v1" choice:"v2"`
+	MetadataServiceVersion  string        `short:"m" long:"instance-metadata-service-version"   description:"Instance Metadata Service version" default:"v2" choice:"v1" choice:"v2"`
 	MetadataServiceTokenTTL time.Duration `short:"T" long:"instance-metadata-service-token-ttl" description:"Instance Metadata Service token TTL (only valid for Instance Metadata Service version v2)" default:"6h"`
 
 	CacheSec     int          `short:"c" long:"cachesec"    description:"Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for indefinite." default:"0"`
@@ -373,7 +373,7 @@ AWS has two modes for interacting with the metadata API:
 * v1: request/response method (traditional)
 * v2: session-oriented method (more secure)
 
-If you are unsure, choose v2. The default is currently v1 for backwards compatibliity.
+If you are unsure, choose v2, which is the default.
 
 See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html for additional details.
 
