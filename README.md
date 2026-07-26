@@ -14,65 +14,69 @@ $ tree /var/run/aws
 ├── dynamic
 │   └── instance-identity
 │       ├── document
-│       ├── dsa2048
 │       ├── pkcs7
 │       ├── rsa2048
 │       └── signature
-├── meta-data
-│   ├── ami-id
-│   ├── ami-launch-index
-│   ├── ami-manifest-path
-│   ├── block-device-mapping
-│   │   ├── ami
-│   │   └── root
-│   ├── hostname
-│   ├── iam
-│   │   ├── info
-│   │   └── security-credentials
-│   │       └── test
-│   ├── instance-action
-│   ├── instance-id
-│   ├── instance-type
-│   ├── local-hostname
-│   ├── local-ipv4
-│   ├── mac
-│   ├── metrics
-│   ├── network
-│   │   └── interfaces
-│   │       └── macs
-│   │           └── 06:5e:69:f7:53:ed
-│   │               ├── device-number
-│   │               ├── interface-id
-│   │               ├── local-hostname
-│   │               ├── local-ipv4s
-│   │               ├── mac
-│   │               ├── owner-id
-│   │               ├── security-group-ids
-│   │               ├── security-groups
-│   │               ├── subnet-id
-│   │               ├── subnet-ipv4-cidr-block
-│   │               ├── vpc-id
-│   │               └── vpc-ipv4-cidr-block
-│   ├── placement
-│   │   └── availability-zone
-│   ├── profile
-│   ├── public-keys
-│   │   └── 0
-│   │       └── openssh-key
-│   ├── reservation-id
-│   ├── security-groups
-│   └── services
-│       └── domain
-│           └── amazonaws.com
-├── tags
-│   ├── createdBy
-│   ├── name
-│   └── role
-└── user-data
+└── meta-data
+    ├── ami-id
+    ├── ami-launch-index
+    ├── ami-manifest-path
+    ├── block-device-mapping
+    │   ├── ami
+    │   ├── ephemeral0
+    │   ├── ephemeral1
+    │   └── root
+    ├── events
+    ├── hostname
+    ├── identity-credentials
+    ├── instance-action
+    ├── instance-id
+    ├── instance-life-cycle
+    ├── instance-type
+    ├── local-hostname
+    ├── local-ipv4
+    ├── mac
+    ├── metrics
+    ├── network
+    │   └── interfaces
+    │       └── macs
+    │           └── 06:6f:de:da:f0:3d
+    │               ├── device-number
+    │               ├── interface-id
+    │               ├── ipv4-associations
+    │               ├── local-hostname
+    │               ├── local-ipv4s
+    │               ├── mac
+    │               ├── owner-id
+    │               ├── public-hostname
+    │               ├── public-ipv4s
+    │               ├── security-group-ids
+    │               ├── security-groups
+    │               ├── subnet-id
+    │               ├── subnet-ipv4-cidr-block
+    │               ├── vpc-id
+    │               ├── vpc-ipv4-cidr-block
+    │               └── vpc-ipv4-cidr-blocks
+    ├── placement
+    │   ├── availability-zone
+    │   ├── availability-zone-id
+    │   └── region
+    ├── profile
+    ├── public-hostname
+    ├── public-ipv4
+    ├── public-keys
+    │   └── 0
+    │       └── openssh-key
+    ├── reservation-id
+    ├── security-groups
+    ├── services
+    │   ├── domain
+    │   └── partition
+    └── system
 
-16 directories, 42 files
+14 directories, 49 files
 $ cat /var/run/aws/meta-data/instance-id
-i-1234567890
+i-0b22a22eec53b9321
 $ cat /var/run/aws/user-data
 #! /bin/bash
 echo 'Hello world'
@@ -99,79 +103,65 @@ Feedback and feature requests are welcome!
 
 ## Installing
 
-### Release packages
+### Packages
 
 Packages are built as `.deb`, `.rpm`, `.apk`, and Arch Linux packages. See
 [releases](https://github.com/jszwedko/ec2-metadatafs/releases) to install one of these.
 
-### Binary installation
-
-#### Linux (64 bit)
-
-```bash
-curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.4.0/linux_amd64 > ec2-metadatafs
-sudo mv ec2-metadatafs /usr/bin/
-sudo chmod +x /usr/bin/ec2-metadatafs
-```
-
-#### Linux (32 bit)
-
-```bash
-curl -sL https://github.com/jszwedko/ec2-metadatafs/releases/download/0.4.0/linux_386 > ec2-metadatafs
-sudo mv ec2-metadatafs /usr/bin/
-sudo chmod +x /usr/bin/ec2-metadatafs
-```
-
 ### From source
 
-Install the latest via: `GOVENDOREXPERIMENT=1 go get
-github.com/jszwedko/ec2-metadatafs` (requires Go >= 1.5 to be installed).
+Install the latest via: `go install github.com/jszwedko/ec2-metadatafs@latest`
 
 ## Usage
 
 ```
 Usage:
-  ec2-metadatafs [OPTIONS] mountpoint
+  ec2-metadatafs [OPTIONS] [mountpoint]
 
 ec2metadatafs mounts a FUSE filesystem which exposes the EC2 instance metadata
 (and optionally the tags) of the host as files and directories rooted at the
 given location.
 
 Application Options:
-  -v, --verbose                Print verbose logs, can be specified multiple times (up to 2)
-  -f, --foreground             Run in foreground
-  -V, --version                Display version info
-  -e, --endpoint=              EC2 metadata service HTTP endpoint (default: http://169.254.169.254/latest/)
-  -c, --cachesec=              Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for
-                               indefinite. (default: 0)
-  -t, --tags                   Mount EC2 instance tags at <mount point>/tags
-  -o, --options=               Mount options, see below for description
-  -n, --no-syslog              Disable syslog when daemonized
-  -F, --syslog-facility=       Syslog facility to use when daemonized (see below for options) (default: USER)
+  -v, --verbose                                   Print verbose logs, can be specified multiple times (up to 2)
+  -f, --foreground                                Run in foreground
+  -V, --version                                   Display version info
+      --endpoint=                                 Deprecated alias for --instance-metadata-service-endpoint
+  -e, --instance-metadata-service-endpoint=       Instance Metadata Service HTTP endpoint (default: http://169.254.169.254/latest/)
+  -m, --instance-metadata-service-version=[v1|v2] Instance Metadata Service version (default: v2)
+  -T, --instance-metadata-service-token-ttl=      Instance Metadata Service token TTL (only valid for Instance Metadata Service version v2) (default: 6h)
+  -c, --cachesec=                                 Number of seconds to cache files attributes and directory listings. 0 to disable, -1 for indefinite. (default: 0)
+  -t, --tags                                      Mount EC2 instance tags at <mount point>/tags
+  -o, --options=                                  Mount options, see below for description
+  -n, --no-syslog                                 Disable syslog when daemonized
+  -F, --syslog-facility=                          Syslog facility to use when daemonized (see below for options) (default: USER)
 
 AWS Credentials (only used when mounting tags):
-      --aws-access-key-id=     AWS Access Key ID (adds to credential chain, see below)
-      --aws-secret-access-key= AWS Secret Access key (adds to credential chain, see below)
-      --aws-session-token=     AWS session token (adds to credential chain, see below)
+      --aws-access-key-id=                        AWS Access Key ID (adds to credential chain, see below)
+      --aws-secret-access-key=                    AWS Secret Access key (adds to credential chain, see below)
+      --aws-session-token=                        AWS session token (adds to credential chain, see below)
 
 Help Options:
-  -h, --help                   Show this help message
+  -h, --help                                      Show this help message
 
 Arguments:
-  mountpoint:                  Directory to mount the filesystem at
+  mountpoint:                                     Directory to mount the filesystem at
 
 Mount options:
-  -o debug                     Enable debug logging, same as -v
-  -o fuse_debug                Enable fuse_debug logging (implies debug), same as -vv
-  -o endpoint=ENDPOINT         EC2 metadata service HTTP endpoint, same as --endpoint=
-  -o tags                      Mount the instance tags at <mount point>/tags, same as --tags
-  -o aws_access_key_id=ID      AWS API access key (see below), same as --aws-access-key-id=
-  -o aws_secret_access_key=KEY AWS API secret key (see below), same as --aws-secret-access-key=
-  -o aws_session_token=KEY     AWS API session token (see below), same as --aws-session-token=
-  -o cachesec=SEC              Number of seconds to cache files attributes and directory listings, same as --cachesec
-  -o syslog_facility=                                    Syslog facility to send messages upon when daemonized (see below)
-  -o no_syslog                 Disable logging to syslog when daemonized
-  -o FUSEOPTION=OPTIONVALUE    FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
+  -o debug                                        Enable debug logging, same as -v
+  -o fuse_debug                                   Enable fuse_debug logging (implies debug), same as -vv
+  -o endpoint=ENDPOINT                            Deprecated alias for -o instance_metadata_service_endpoint=
+  -o instance_metadata_service_endpoint=ENDPOINT  Instance metadata service HTTP endpoint, same as --instance-metadata-service-endpoint=
+  -o instance_metadata_service_version=VERSION    Instance Metadata Service version, v1 or v2, same as --instance-metadata-service-version=
+  -o instance_metadata_service_token_ttl=TTL      Instance Metadata Service token TTL, only valid with service_version=v2, same as --instance-metadata-service-token-ttl=
+  -o tags                                          Mount the instance tags at <mount point>/tags, same as --tags
+  -o aws_access_key_id=ID                         AWS API access key (see below), same as --aws-access-key-id=
+  -o aws_secret_access_key=KEY                    AWS API secret key (see below), same as --aws-secret-access-key=
+  -o aws_session_token=KEY                        AWS API session token (see below), same as --aws-session-token=
+  -o cachesec=SEC                                 Number of seconds to cache files attributes and directory listings, same as --cachesec
+  -o syslog_facility=                             Syslog facility to send messages upon when daemonized (see below)
+  -o no_syslog                                    Disable logging to syslog when daemonized
+  -o FUSEOPTION=OPTIONVALUE                       FUSE mount option, please see the OPTIONS section of your FUSE manual for valid options
 
 AWS credential chain:
   AWS credentials only required when mounting the instance tags (--tags or -o tags).
@@ -184,6 +174,17 @@ AWS credential chain:
   - IAM role associated with the instance
 
   Note that the AWS session token is only needed for temporary credentials from AWS security token service.
+
+Instance Metadata Service (IMDS) Version:
+
+AWS has two modes for interacting with the metadata API:
+
+* v1: request/response method (traditional)
+* v2: session-oriented method (more secure)
+
+If you are unsure, choose v2, which is the default.
+
+See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html for additional details.
 
 Caching:
 
@@ -202,7 +203,7 @@ Valid syslog facilities:
   KERN, USER, MAIL, DAEMON, AUTH, SYSLOG, LPR, NEWS, UUCP, CRON, AUTHPRIV, FTP, LOCAL0, LOCAL1, LOCAL2, LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7
 
 Version:
-  0.3.0-16-gb73643f-dirty ('b73643f6a5aface7e405429779e8554a7b3767c8')
+
 
 Author:
   Jesse Szwedko
